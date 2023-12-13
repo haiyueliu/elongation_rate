@@ -124,7 +124,7 @@ rm(list.ctrl)
 gc()
 
 ######################################################
-### Step 4. Smooth the coverage profiles using splines
+### Step 5. Smooth the coverage profiles using splines
 #######################################################
 gene.spar=0.9     
 norm.spline.list <- list()
@@ -141,7 +141,7 @@ for (sample in names(norm.cov.list)){
 # rm(norm.spline.list)
 # gc()
 ############################################################
-### Step 5. Identify wave fronts of the smoothing splines
+### Step 6. Identify wave fronts of the smoothing splines
 ############################################################
 ### find the wave front of the elongating RNAPII products relative to the transcript's TSS
 wf <- sapply(norm.spline.list, function(x) {sapply(x, function(i) {wave_front_calling(i)})}) %>% as.data.frame
@@ -157,7 +157,7 @@ wf_long <-
 
 
 ######################################################
-### Step 6. Calculate elongation rate for every gene
+### Step 7. Calculate elongation rate for every gene
 ### filter genes based on wave fronts positions
 ### linear regression on wave fronts and elongation times
 ######################################################
@@ -182,17 +182,6 @@ rate_df <-
   left_join(as.data.frame(wave.orders) %>%
               rownames_to_column("gene_id"))
 
-### recheck the orders of the position of wave fronts
-# rate_df %<>%
-#   group_by(gene_id) %>%
-#   mutate(order = ifelse((wf[DRB=="DRB_5minR"] < wf[DRB=="DRB_10minR"]) &
-#                            (wf[DRB=="DRB_10minR"] < wf[DRB=="DRB_15minR"]) &
-#                            (wf[DRB=="DRB_15minR"] < wf[DRB=="DRB_20minR"]), "1234",
-#                          ifelse(t(wf[DRB=="DRB_5minR"] < wf[DRB=="DRB_10minR"]) &
-#                                  (wf[DRB=="DRB_10minR"] < wf[DRB=="DRB_15minR"]), "123",
-#                                 ifelse((wf[DRB=="DRB_10minR"] < wf[DRB=="DRB_15minR"]) &
-#                                         (wf[DRB=="DRB_15minR"] < wf[DRB=="DRB_20minR"]) &
-#                                         (wf[DRB=="DRB_20minR"] != round(gene_length/1000,1)), "234", "other"))))
 ### recheck the orders of the position of wave fronts
 rate_df %<>%
   group_by(gene_id) %>%
@@ -225,9 +214,7 @@ rate_df %<>%
                                                             summary(lm(wf~time))$adj.r.squared))))))
 
 ### A specific case: Pol II reached the end of the gene at 10, 15 and 20min time points.
-write.table(rate_df, paste0(data.dir, "elongation_rate_wave_front.txt"), quote=FALSE, sep="\t", row.names = FALSE)
-```
-
+# write.table(rate_df, paste0(data.dir, "elongation_rate_wave_front.txt"), quote=FALSE, sep="\t", row.names = FALSE)
 
 
 #### test linear regression
@@ -297,4 +284,32 @@ rate_df %<>%
 rate_df %<>%
   filter(!is.na(best.adj.r.squared), best.elongation.rate > 0)
 
-write.table(rate_df, paste0(data.dir, "elongation_rate_wave_front.txt"), quote=FALSE, sep="\t", row.names = FALSE)
+# write.table(rate_df, paste0(data.dir, "elongation_rate_wave_front.txt"), quote=FALSE, sep="\t", row.names = FALSE)
+
+wf_long %<>% mutate(time = as.numeric(sub("minR", "", sub("DRB_", "", sample))))
+  
+wf_long %>%
+  ggplot(aes(time, wf/1000, color = gene_id)) %>%
+  + geom_point(size=1.5) %>%
+  + facet_wrap(~gene_id) %>%
+  + xlab("Time [minutes]") %>%
+  + ylab("Wave front position relation to TSS [kb]") %>%
+  + geom_smooth(method = "lm") %>%
+  + theme_bw() %>%
+  + theme(legend.position = "none", 
+          axis.text = element_text(size=16),
+          axis.title = element_text(size=18),
+          strip.text = element_text(size=16))
+
+wf_long %>%
+  ggplot(aes(time, wf/1000, color = gene_id)) %>%
+  + geom_point(size=1.5) %>%
+  + facet_wrap(~gene_id) %>%
+  + xlab("Time [minutes]") %>%
+  + ylab("Wave front position relation to TSS [kb]") %>%
+  + geom_smooth(method = "lm", data = wf_long %>% filter(time !=20)) %>%
+  + theme_bw() %>%
+  + theme(legend.position = "none", 
+          axis.text = element_text(size=16),
+          axis.title = element_text(size=18),
+          strip.text = element_text(size=16))
