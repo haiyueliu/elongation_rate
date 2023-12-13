@@ -1,12 +1,12 @@
 # Gene-specific transcription elongation rates
 
-This repository contains the main script to calculate the absolute RNA Pol II elongation rates for individule genes based on DRB/TTchem-seq2 data.
+This repository contains the main scripts to calculate the absolute RNA Pol II elongation rates for individule genes based on DRB/TTchem-seq2 data.
 [DRB/TTchem-seq2]() is an updated version of DRB/TTchem-seq [Gregersen et al., 2020](DOI: 10.1038/s41596-019-0262-3) data. It mainly differs from DRB/TTchem-seq in two folds:
 
-1. The DRB release times have been reduce from 10, 20, 30 and 40 minutes to 5, 10, 15 and 20 minutes.
+1. The DRB release times have been reduced from 10, 20, 30 and 40 minutes to 5, 10, 15 and 20 minutes.
 2. In stead of calling the peaks of elongation waves, the wave fronts have been called and represent the distance travelled by RNAPII.
 
-We have shown that the number of estimation for individual genes has increased by ~8 fold comparing to DRB/TTchem-seq. The bash and R scripts for data processing and elongation rates calculation are shown below.
+We have shown that the number of estimation for individual genes has increased by ~8 fold (i.e. from hundreds to thousands) comparing to DRB/TTchem-seq. Follow the bash and R scripts for data processing and elongation rates calculation as shown below.
 
 ## I. Data processing (bash scripts)
 
