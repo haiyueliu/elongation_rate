@@ -41,4 +41,6 @@ Install the required R packages:
 
 ## Reference 
 
+1. Gregersen LH, Mitter R & Svejstrup JQ (2020) [Using TTchem-seq for profiling nascent transcription and measuring transcript elongation.](https://doi.org/10.1038/s41596-019-0262-3) Nat Protoc 15: 604–627
+2. 
 
