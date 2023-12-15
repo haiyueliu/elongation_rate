@@ -1,0 +1,11 @@
+cell_line	sample_id	sample_name	sample	rep
+U2OS	U2OS_DRB_noR_rep1_S13	DRB_noR_rep1	DRB_noR	rep1
+U2OS	U2OS_DRB_noR_rep2_S18	DRB_noR_rep2	DRB_noR	rep2
+U2OS	U2OS_DRB_5minR_rep1_S14	DRB_5minR_rep1	DRB_5minR	rep1
+U2OS	U2OS_DRB_5minR_rep2_S19	DRB_5minR_rep2	DRB_5minR	rep2
+U2OS	U2OS_DRB_10minR_rep1_S15	DRB_10minR_rep1	DRB_10minR	rep1
+U2OS	U2OS_DRB_10minR_rep2_S20	DRB_10minR_rep2	DRB_10minR	rep2
+U2OS	U2OS_DRB_15minR_rep1_S16	DRB_15minR_rep1	DRB_15minR	rep1
+U2OS	U2OS_DRB_15minR_rep2_S21	DRB_15minR_rep2	DRB_15minR	rep2
+U2OS	U2OS_DRB_20minR_rep1_S17	DRB_20minR_rep1	DRB_20minR	rep1
+U2OS	U2OS_DRB_20minR_rep2_S22	DRB_20minR_rep2	DRB_20minR	rep2
