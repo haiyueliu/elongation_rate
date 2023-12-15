@@ -355,38 +355,41 @@ display: none;
 <div id="gene-specific-transcription-elongation-rates" class="section level1">
 <h1>Gene-specific transcription elongation rates</h1>
 <p>This repository contains the main scripts to calculate the absolute
-RNA Pol II elongation rates for individule genes based on
-DRB/TTchem-seq2 data. DRB/TTchem-seq2[1] is an updated version of
-DRB/TTchem-seq (Gregersen et al., 2020)[2] data. It mainly differs from
-DRB/TTchem-seq in two folds:</p>
+RNA Pol II elongation rates for individual genes based on
+DRB/TTchem-seq2 data. DRB/TTchem-seq2][1] is an updated version of
+DRB/TTchem-seq[2]. The mainly differs from the original version in two
+aspects:</p>
 <ol style="list-style-type: decimal">
-<li>The DRB release times have been reduced from 10, 20, 30 and 40
+<li>The DRB release times have been reduce from 10, 20, 30 and 40
 minutes to 5, 10, 15 and 20 minutes.</li>
 <li>In stead of calling the peaks of elongation waves, the wave fronts
-have been called and represent the distance travelled by RNAPII.</li>
+have been called and represent the distance traveled by RNAPII.</li>
 </ol>
-<p>We have shown that the number of estimation for individual genes has
-increased by ~8 fold (i.e. from hundreds to thousands) comparing to
-DRB/TTchem-seq. Follow the bash and R scripts for data processing and
-elongation rates calculation as shown below.</p>
+<p>In DRB/TTchem-seq2, the number of estimation of elongation rates for
+individual genes increased to ~3000. The bash script for data processing
+and the R scripts for elongation rates calculation can be found in this
+repository.</p>
 <div id="i.-data-processing-bash-scripts" class="section level2">
 <h2>I. Data processing (bash scripts)</h2>
 <div id="requirements" class="section level3">
 <h3>Requirements</h3>
+<p>umi_tools samtools trimgalore cutadapt fastqc STAR subread bedtools
+bedGraphToBigWig R (DESeq2; rtracklayer; GenomicFeatures; dplyr; tidyr;
+magrittr; data.table; ggplot2) python (pysam)</p>
 </div>
 <div id="how-to-start" class="section level3">
 <h3>How to start</h3>
-<p>Download the data_processing.sh script and modify the configuration
-parameters to your own system. Then run the bash script in a server with
-at least 32G memory.</p>
+<p>Download the DRB_TTchem_seq_data_processing.sh script in the script
+folder and modify the configuration parameters. Then run the script in
+UNIX system with at least 32G memory.</p>
 </div>
 </div>
 <div id="ii.-elongation-rates-calculation-r-scripts" class="section level2">
 <h2>II. Elongation rates calculation (R scripts)</h2>
 <div id="requirements-1" class="section level3">
 <h3>Requirements</h3>
-<p>Install the required R packages: rtracklayer; GenomicFeatures;
-tibble; dplyr; tidyr; magrittr; ggplot2;</p>
+<p>Install the required R packages: rtracklayer GenomicFeatures tibble
+dplyr tidyr magrittr ggplot2 cowplot</p>
 </div>
 <div id="how-to-start-1" class="section level3">
 <h3>How to start</h3>
