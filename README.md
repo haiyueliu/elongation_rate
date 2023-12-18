@@ -10,37 +10,41 @@ To obtain the elongation rates for singles genes from raw DRB/TTchem-seq2 data, 
 
 ## I. Data processing (bash scripts)
 
-The bash script runs the data processing steps including: UMI attach, FastQC, adaptor trimming, STAR alignment, 
-
 ### Requirements
-  umi_tools
-  samtools
-  trimgalore
-  cutadapt
-  fastqc
-  STAR
-  subread
-  bedtools
-  bedGraphToBigWig
-  R (DESeq2; rtracklayer; GenomicFeatures; dplyr; tidyr; magrittr; data.table; ggplot2)
-  python (pysam)
+
+```
+umi_tools
+samtools
+trimgalore
+cutadapt
+fastqc
+STAR
+subread
+bedtools
+bedGraphToBigWig
+R (DESeq2; rtracklayer; GenomicFeatures; dplyr; tidyr; magrittr; data.table; ggplot2)
+python (pysam)
+```
 
 ### How to start
 
 Download the DRB_TTchem_seq_data_processing.sh script in the script folder and modify the configuration parameters. Then run the script in UNIX system with at least 32G memory.
 
 ### Main procedures
-  UMI attach (optional)
-  fastQC & adaptor trimming
-  STAR alignment
-  Extract uniquely mapping reads
-  Deduplication (optional)
-  Removal of exon-intron-exon mapping reads
-  Split forward and reverse reads
-  Count mapped reads
-  Quantify gene count
-  Calculate spike-in size factors
-  Convert bam to bigwig
+
+```
+UMI attach (optional)
+fastQC & adaptor trimming
+STAR alignment
+Extract uniquely mapping reads
+Deduplication (optional)
+Removal of exon-intron-exon mapping reads
+Split forward and reverse reads
+Count mapped reads
+Quantify gene count
+Calculate spike-in size factors
+Convert bam to bigwig
+```
 
 
 ## II. Elongation rates calculation (R scripts)
@@ -48,14 +52,17 @@ Download the DRB_TTchem_seq_data_processing.sh script in the script folder and m
 ### Requirements
 
 Install the required R packages:
-     rtracklayer
-     GenomicFeatures
-     tibble
-     dplyr
-     tidyr
-     magrittr
-     ggplot2
-     cowplot
+
+```
+rtracklayer
+GenomicFeatures
+tibble
+dplyr
+tidyr
+magrittr
+ggplot2
+cowplot
+```
 
 ### How to start 
 
