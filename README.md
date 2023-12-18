@@ -6,7 +6,7 @@ DRB/TTchem-seq2[1] is an updated version of DRB/TTchem-seq[2], which largely (6-
 1. The DRB release times have been reduce from 10, 20, 30 and 40 minutes to 5, 10, 15 and 20 minutes.
 2. In stead of calling the peaks of elongation waves, the wave fronts have been called and represent the distance traveled by RNAPII.
 
-To obtain the elongation rates for singles genes from raw DRB/TTchem-seq2 data, we process the raw sequencing reads using a bash script and then calculated the elongation rates using the R markdown file. 
+To obtain the elongation rates for singles genes from raw DRB/TTchem-seq2 data, we process the raw sequencing reads using a bash script and then calculated the elongation rates using R scrips. 
 
 ## I. Data processing (bash scripts)
 
