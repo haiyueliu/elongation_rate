@@ -42,6 +42,7 @@ script_dir="/maps/projects/dan1/people/mjh723/projects/DRB_TTchem_seq/script/"  
 sample_sheet="${work_dir}script/samplesheet.tsv"                                      ### required; one example tsv file can be found in this github repository. The column names and orders matter for the pipeline 
 sequencing_type="SE"                                                                  ### required; options: "SE", "PE"
 UMI=true                                                                              ### required; options: true, false
+UMI_sequence="NNNNNNNNNNN"                                                            ### required if UMI=true; the length of UMIs can vary depends on the project
 strandedness="reverse-stranded"                                                       ### required; options: "reverse-stranded", "stranded", "unstranded"
 fastq_suffix=".fastq.gz"                                                              ### required; options: ".fastq.gz", ".fq.gz"                                                                 
 ### index & annotation
@@ -85,9 +86,9 @@ cd ${work_dir}
 
 ########## Data processing ###############
 
-#######################################
-### 1. Attach UMI in R2 to header of R1
-#######################################
+#########################################
+### 1. Attach UMIs in R2 to header of R1
+#########################################
 module purge
 module load dangpu_libs python/3.7.13 umi_tools/1.1.4
 module load samtools
@@ -103,7 +104,7 @@ do
   ### extract UMI sequenc from read2 and add it to read headers of read1
   ### umi_tools is not multiple threading
   #########################################
-  umi_tools extract --extract-method=string --bc-pattern=NNNNNNNNNNN --stdin ${R2_in} --read2-in=${R1_in} --read2-out=${R1_out} -L ${log}
+  umi_tools extract --extract-method=string --bc-pattern=${UMI_sequence} --stdin ${R2_in} --read2-in=${R1_in} --read2-out=${R1_out} -L ${log}
 done
 ############################
 ### 2. QC & trim adaptor
@@ -211,7 +212,6 @@ done
 #######################################
 ### 5. Deduplication of UMIs (optional)
 #######################################
-### using parallel to run UMI deduplication jobs for multiple files
 module purge
 module load parallel
 module load dangpu_libs python/3.7.13 umi_tools/1.1.4
@@ -337,12 +337,20 @@ do
   else
     bam_name=${bam_dir}${sample}.unimappers
   fi
-  echo "featureCount for $sample"
-  if [[ "${sequencing_type}" == "SE" && "${strandedness}" == "reverse-stranded" ]]; then
-    featureCounts -T ${cores} -s 2 -t gene -g gene_id -a ${gtf} -o ${featureCounts_dir}${sample}.gene.featureCounts.txt ${bam_name}.bam
+  ### strandedness
+  if [[ "${strandedness}" == "unstranded" ]]; then
+    strand_type=0
+  elif [[ "${strandedness}" == "stranded" ]]; then
+    strand_type=1
+  else
+    strand_type=2
   fi
-  if [[ "${sequencing_type}" == "PE" && "${strandedness}" == "reverse-stranded" ]]; then
-    featureCounts -T ${cores} -p --countReadPairs -s 2 -t gene -g gene_id -a ${gtf} -o ${featureCounts_dir}${sample}.gene.featureCounts.txt ${bam_name}.bam
+  echo "featureCount for $sample"
+  if [[ "${sequencing_type}" == "SE" ]]; then
+    featureCounts -T ${cores} -s ${strand_type} -t gene -g gene_id -a ${gtf} -o ${featureCounts_dir}${sample}.gene.featureCounts.txt ${bam_name}.bam
+  fi
+  if [[ "${sequencing_type}" == "PE" ]]; then
+    featureCounts -T ${cores} -p --countReadPairs -s ${strand_type} -t gene -g gene_id -a ${gtf} -o ${featureCounts_dir}${sample}.gene.featureCounts.txt ${bam_name}.bam
   fi
 done
 ########################################
@@ -359,25 +367,25 @@ module purge
 module load samtools/1.15.1
 module load bedtools/2.30.0
 module load GenomeToolset
-## pre-compute size factor using DESeq2
-## load the sample size factors calcaulted using DESeq2
+## Load the sample size factor file calcaulted using DESeq2 and the reads number file 
 size_factors=${work_dir}"analysis/size_factors_deseq2.txt"
 reads_number="${work_dir}analysis/reads_number.txt"
-[ ! -f ${scale_factors} ] && echo "Size factor file DOES NOT exists."
+[ ! -f ${scale_factors} ] && echo "Size factor file DOES NOT exists!"
+[ ! -f ${reads_number} ] && echo "Reads number file DOES NOT exists!"
 for sample in ${sample_names[@]}
 do
-  echo ${sample}
+  # echo ${sample}
   if $UMI; then
     bam_name=${bam_dir}${sample}.unimappers.deduped
   else
     bam_name=${bam_dir}${sample}.unimappers
   fi
-  ###### normalized to spike-ins
+  ###############################
+  ### normalized to spike-ins
+  ### bam -> bedgraph -> bigwig 
+  ###############################
   scale_factor=$( cat ${size_factors} | awk -v s=$sample '{ if($1==s) {print $2^-1} }' )
-  echo $scale_factor
-  ############################################
-  ### bam -> bedgraph -> bigwig -- unimappers
-  ############################################
+  echo "Convert bam to bigwig for sample: ${sample} and scale it by ${scale_factor}"
   ### unimappers forward strand
   bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -split -strand - -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.spikein.normalized.fwd.bedgraph
   bedGraphToBigWig ${bigwig_dir}${sample}.spikein.normalized.fwd.bedgraph ${chrsize} ${bigwig_dir}${sample}.spikein.normalized.fwd.bw
@@ -387,16 +395,17 @@ do
   ### rm intermediate files
   rm ${bigwig_dir}${sample}.spikein.normalized.fwd.bedgraph
   rm ${bigwig_dir}${sample}.spikein.normalized.rev.bedgraph
-  ###### normalized to library size
-  ############################################
-  ### bam -> bedgraph -> bigwig -- unimappers
-  ############################################
-  lib_size=$( cat ${reads_numbers} | awk -v s=$sample '{ if($1==s) {print $2/1e6} }')  ### uniquely mapped reads
+  ###############################
+  ### normalized to library size
+  ### bam -> bedgraph -> bigwig 
+  ################################
+  scale_factor=$( cat ${reads_numbers} | awk -v s=$sample '{ if($1==s) {print 10^6/$2} }')  ### uniquely mapped reads
+  echo "Convert bam to bigwig for sample: ${sample} and scale it by ${scale_factor}"
   ### unimappers forward strand
-  bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -scale ${lib_size} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
+  bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
   bedGraphToBigWig ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph ${chrsize} ${bigwig_dir}${sample}.libsize.normalized.fwd.bw
   ### unimappers reverse strand
-  bedtools genomecov -ibam ${bam_name}.rev.bam -bg -scale ${lib_size} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph
+  bedtools genomecov -ibam ${bam_name}.rev.bam -bg -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph
   bedGraphToBigWig ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph ${chrsize} ${bigwig_dir}${sample}.libsize.normalized.rev.bw
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph
