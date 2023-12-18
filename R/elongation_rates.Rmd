@@ -39,8 +39,8 @@ bam.dir <- "~/Documents/GitHub/elongation_rate/test_data/"
 output.dir <- "~/Documents/GitHub/elongation_rate/output/"
 gtf.file <- "~/Documents/GitHub/elongation_rate/annotation/gencode.v43.primary_assembly.basic.annotation.gtf"
 sample.info <- read.table("~/Documents/GitHub/elongation_rate/sample.info.txt", header = TRUE)
-control.sample.names <- c("DRB_noR_rep1", "DRB_noR_rep2")
-control.sample <- "DRB_noR"
+control.sample.names <- c("DRB_noR_rep1", "DRB_noR_rep2")       ### if no control samples, this can be set as NULL
+control.sample <- "DRB_noR"                                     ### if no control samples, this can be set as NULL
 ```
 
 ## Filter gene annotation 
@@ -120,9 +120,11 @@ for (sample in names(cov.list)){
 }
 ```
 
-## Normalize coverage to control samples
+## Normalize coverage to control samples (Optional)
 
-We suggest to perform DRB/TTchem-seq with control samples in which DRB is not washed out and 4sU is incorporated in the last 5 min of the experiment to capture the background signals.
+We suggest to perform DRB/TTchem-seq2 with control samples in which DRB is not washed out, but 4sU is incorporated for the same times as the other samples to estimate the background signal levels. 
+
+If you do have control samples, the DRB release samples are noramlized to controls samples. If not, this step can be ignored. 
 
 ```{r}
 #### Mean coverage across replicates
@@ -136,18 +138,26 @@ for(sample in unique(sample.info$sample)){
     mean.cov.list[[sample]][[m]] <- rowMeans(cbind(list1[[m]], list2[[m]]))
   }
 }
-### Subtract the mean coverage of each sample by the mean coverage of control sample.
-norm.cov.list <- list()
-for(sample in names(mean.cov.list)){
-  if(sample %notin% control.sample){
-    print(sample)
-    list.drb <- mean.cov.list[[sample]]
-    list.ctrl <- mean.cov.list[[control.sample]]
-    for(m in names(list1)){
-      norm.cov.list[[sample]][[m]] <- pmax(0, list.drb[[m]] - list.ctrl[[m]])
+if( !is.null(control.sample.names)){
+  ### Subtract the mean coverage of each sample by the mean coverage of control sample.
+  norm.cov.list <- list()
+  for(sample in names(mean.cov.list)){
+    if(sample %notin% control.sample){
+      print(sample)
+      list.drb <- mean.cov.list[[sample]]
+      list.ctrl <- mean.cov.list[[control.sample]]
+      for(m in names(list1)){
+        norm.cov.list[[sample]][[m]] <- pmax(0, list.drb[[m]] - list.ctrl[[m]])
+      }
     }
   }
+} else{
+  norm.cov.list <- mean.cov.list
 }
+## remove intermediate files
+rm(cov.list)
+rm(mean.cov.list)
+gc()
 ```
 
 ## Smooth read coverage profiles
