@@ -95,7 +95,7 @@ for sample_id in ${sample_ids[@]}
 do
   sample=$(cat ${sample_sheet} | awk -v s=$sample_id '{ if($2==s) {print $3} }')
   if [[ "${sequencing_type}" == "SE" ]]; then
-    echo "Extract UMIs from R2 and attach them to R1 read headers for $sample"
+    echo "Extract UMIs from R2 and attach them to R1 read headers for $sample \n"
     R1_in=${fastq_dir}${sample_id}_R1_001${fastq_suffix}
     umi_in=${fastq_dir}${sample_id}_R2_001${fastq_suffix}
     R1_out=${fastq_dir}${sample}_umi_attached${fastq_suffix}
@@ -107,7 +107,7 @@ do
   fi 
   if [[ "${sequencing_type}" == "PE" ]]; then
     echo "Paired-end reads \n"
-    echo "Extract UMIs from R2 and attach them to R1 and R3 read headers for $sample_id \n"
+    echo "Extract UMIs from R2 and attach them to R1 and R3 read headers for $sample \n"
     R1_in=${fastq_dir}${sample_id}_R1_001.fastq.gz
     R2_in=${fastq_dir}${sample_id}_R3_001.fastq.gz
     umi_read=${fastq_dir}${sample_id}_R2_001.fastq.gz
@@ -136,23 +136,23 @@ do
     fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
 	  ### trim adaotors & fastQC on trimmed reads
 	  trim_galore --cores ${cores} --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
-    ### rename files with sample name
-    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_fastqc.html
-    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_fastqc.zip
-    mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_trimming_report.txt
+    # ### rename files with sample name
+    # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_fastqc.html
+    # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_fastqc.zip
+    # mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_trimming_report.txt
 	fi
 	if [[ "${sequencing_type}" == "PE" ]]; then
 		### fastQC
     fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
 	  ### trim adaotors & fastQC on trimmed reads
 	  trim_galore --cores ${cores} --paired --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
-    ### rename files with sample name
-    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R1_fastqc.html
-    mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R2_fastqc.html
-    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R1_fastqc.zip
-    mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R2_fastqc.zip
-    mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R1_trimming_report.txt
-	  mv ${trimmed_fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R2_trimming_report.txt
+    # ### rename files with sample name
+    # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R1_fastqc.html
+    # mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R2_fastqc.html
+    # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R1_fastqc.zip
+    # mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R2_fastqc.zip
+    # mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R1_trimming_report.txt
+	  # mv ${trimmed_fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R2_trimming_report.txt
   fi
 done
 ###########################
