@@ -91,20 +91,32 @@ cd ${work_dir}
 #########################################
 module purge
 module load dangpu_libs python/3.7.13 umi_tools/1.1.4
-module load samtools
 for sample_id in ${sample_ids[@]}
 do
-	echo $sample_id
-	echo "Extract UMIs from R2 and attach them to R1 read headers for $sample_id"
-  R1_in=${fastq_dir}${sample_id}_R1_001${fastq_suffix}
-  R2_in=${fastq_dir}${sample_id}_R2_001${fastq_suffix}
-  R1_out=${fastq_dir}${sample_id}_R1_umi_attached${fastq_suffix}
-  log=${fastq_dir}${sample_id}_umi_attach.log
-  #########################################
-  ### extract UMI sequenc from read2 and add it to read headers of read1
-  ### umi_tools is not multiple threading
-  #########################################
-  umi_tools extract --extract-method=string --bc-pattern=${UMI_sequence} --stdin ${R2_in} --read2-in=${R1_in} --read2-out=${R1_out} -L ${log}
+  sample=$(cat ${sample_sheet} | awk -v s=$sample_id '{ if($2==s) {print $3} }')
+  if [[ "${sequencing_type}" == "SE" ]]; then
+    echo "Extract UMIs from R2 and attach them to R1 read headers for $sample"
+    R1_in=${fastq_dir}${sample_id}_R1_001${fastq_suffix}
+    umi_in=${fastq_dir}${sample_id}_R2_001${fastq_suffix}
+    R1_out=${fastq_dir}${sample}_umi_attached${fastq_suffix}
+    #########################################
+    ### extract UMI sequenc from read2 and add it to read headers of read1
+    ### umi_tools is not multiple threading
+    #########################################
+    umi_tools extract --extract-method=string --bc-pattern=${UMI_sequence} --stdin ${umi_read} --read2-in=${R1_in} --read2-out=${R1_out} 
+  fi 
+  if [[ "${sequencing_type}" == "PE" ]]; then
+    echo "Paired-end reads \n"
+    echo "Extract UMIs from R2 and attach them to R1 and R3 read headers for $sample_id \n"
+    R1_in=${fastq_dir}${sample_id}_R1_001.fastq.gz
+    R2_in=${fastq_dir}${sample_id}_R3_001.fastq.gz
+    umi_read=${fastq_dir}${sample_id}_R2_001.fastq.gz
+    R1_out=${fastq_dir}${sample}_R1_umi_attached.fastq.gz
+    R2_out=${fastq_dir}${sample}_R2_umi_attached.fastq.gz
+    #########################################
+    umi_tools extract --extract-method=string --bc-pattern=${UMI_sequence} --stdin=${umi_read} --read2-in=${R1_in} --stdout=${R1_out} --read2-stdout
+    umi_tools extract --extract-method=string --bc-pattern=${UMI_sequence} --stdin=${umi_read} --read2-in=${R2_in} --stdout=${R2_out} --read2-stdout
+  fi
 done
 ############################
 ### 2. QC & trim adaptor
@@ -116,34 +128,31 @@ module load pigz trimgalore/0.6.6
 module load dangpu_libs python/3.7.13 cutadapt/4.1
 ### match the strings between fastq.gz(fq.gz) and sample_id, can be empty string
 if $UMI; then name_suffix="umi_attached"; else name_suffix=""; fi
-for sample_id in ${sample_ids[@]}
+for sample in ${sample_names[@]}
 do
-	echo $sample_id
-	### output files with sample names instead of sample ids
-	sample=$(cat ${sample_sheet} | awk -v s=$sample_id '{ if($2==s) {print $3} }')
   echo "$sample : FastQC -- Adaptor trmming -- FastQC "
 	if [[ "${sequencing_type}" == "SE" ]]; then
 	  ### fastQC
-    fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample_id}_R1_${name_suffix}${fastq_suffix}
+    fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
 	  ### trim adaotors & fastQC on trimmed reads
-	  trim_galore --cores ${cores} --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample_id}_R1_${name_suffix}${fastq_suffix}
+	  trim_galore --cores ${cores} --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
     ### rename files with sample name
-    mv ${fastqc_dir}${sample_id}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_fastqc.html
-    mv ${fastqc_dir}${sample_id}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_fastqc.zip
-    mv ${trimmed_fastq_dir}${sample_id}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_trimming_report.txt
+    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_fastqc.html
+    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_fastqc.zip
+    mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_trimming_report.txt
 	fi
 	if [[ "${sequencing_type}" == "PE" ]]; then
 		### fastQC
-    fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample_id}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample_id}_R2_${name_suffix}${fastq_suffix}
+    fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
 	  ### trim adaotors & fastQC on trimmed reads
-	  trim_galore --cores ${cores} --paired --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample_id}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample_id}_R2_${name_suffix}${fastq_suffix}
+	  trim_galore --cores ${cores} --paired --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
     ### rename files with sample name
-    mv ${fastqc_dir}${sample_id}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R1_fastqc.html
-    mv ${fastqc_dir}${sample_id}_R2_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R2_fastqc.html
-    mv ${fastqc_dir}${sample_id}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R1_fastqc.zip
-    mv ${fastqc_dir}${sample_id}_R2_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R2_fastqc.zip
-    mv ${trimmed_fastq_dir}${sample_id}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R1_trimming_report.txt
-	  mv ${trimmed_fastq_dir}${sample_id}_R2_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R2_trimming_report.txt
+    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R1_fastqc.html
+    mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R2_fastqc.html
+    mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R1_fastqc.zip
+    mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R2_fastqc.zip
+    mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R1_trimming_report.txt
+	  mv ${trimmed_fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R2_trimming_report.txt
   fi
 done
 ###########################
