@@ -74,7 +74,7 @@ tmp_dir="${work_dir}tmp/"
 bam_dir="${work_dir}bam/"
 featureCounts_dir="${work_dir}featureCounts/"
 bigwig_dir="${work_dir}bigwig/"
-analysis_dir="{work_dir}analysis/"
+analysis_dir="${work_dir}analysis/"
 mkdir -p ${fastqc_dir}
 mkdir -p ${trimmed_fastq_dir}
 mkdir -p ${tmp_dir}
