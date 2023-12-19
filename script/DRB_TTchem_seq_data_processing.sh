@@ -97,7 +97,7 @@ do
   if [[ "${sequencing_type}" == "SE" ]]; then
     echo "Extract UMIs from R2 and attach them to R1 read headers for $sample \n"
     R1_in=${fastq_dir}${sample_id}_R1_001${fastq_suffix}
-    umi_in=${fastq_dir}${sample_id}_R2_001${fastq_suffix}
+    umi_read=${fastq_dir}${sample_id}_R2_001${fastq_suffix}
     R1_out=${fastq_dir}${sample}_umi_attached${fastq_suffix}
     #########################################
     ### extract UMI sequenc from read2 and add it to read headers of read1
