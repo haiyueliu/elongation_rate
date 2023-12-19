@@ -38,7 +38,7 @@
 ### Tools executables: all the tools are called via module load in this pipeline. If you use a diffrent system, you could change those module load lines.
 cores=10                                                                              ### required; 
 work_dir="/maps/projects/dan1/people/mjh723/projects/DRB_TTchem_seq/"                 ### required; project directory; your fastq folder containing all raw reads should have been loaded into this folder 
-script_dir="/maps/projects/dan1/people/mjh723/projects/DRB_TTchem_seq/script/"        ### required; script direcoty. The R function "size_factor.R" should be found there
+script_dir="${work_dir}script/"                                                       ### required; script direcoty. The R function "size_factor.R" should be found there
 sample_sheet="${work_dir}script/samplesheet.tsv"                                      ### required; one example tsv file can be found in this github repository. The column names and orders matter for the pipeline 
 sequencing_type="SE"                                                                  ### required; options: "SE", "PE"
 UMI=true                                                                              ### required; options: true, false
@@ -395,10 +395,10 @@ do
   ###############################
   scale_factor=$( cat ${size_factors} | awk -v s=$sample '{ if($1==s) {print $2^-1} }' )
   echo "Convert bam to bigwig for sample: ${sample} and scale it by ${scale_factor}"
-  ### unimappers forward strand
+  ### forward strand
   bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -split -strand - -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.spikein.normalized.fwd.bedgraph
   bedGraphToBigWig ${bigwig_dir}${sample}.spikein.normalized.fwd.bedgraph ${chrsize} ${bigwig_dir}${sample}.spikein.normalized.fwd.bw
-  ### unimappers reverse strand
+  ### strand
   bedtools genomecov -ibam ${bam_name}.rev.bam -bg -split -strand + -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.spikein.normalized.rev.bedgraph
   bedGraphToBigWig ${bigwig_dir}${sample}.spikein.normalized.rev.bedgraph ${chrsize} ${bigwig_dir}${sample}.spikein.normalized.rev.bw
   ### rm intermediate files
@@ -410,10 +410,10 @@ do
   ################################
   scale_factor=$( cat ${reads_numbers} | awk -v s=$sample '{ if($1==s) {print 10^6/$2} }')  ### uniquely mapped reads
   echo "Convert bam to bigwig for sample: ${sample} and scale it by ${scale_factor}"
-  ### unimappers forward strand
+  ### forward strand
   bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
   bedGraphToBigWig ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph ${chrsize} ${bigwig_dir}${sample}.libsize.normalized.fwd.bw
-  ### unimappers reverse strand
+  ### reverse strand
   bedtools genomecov -ibam ${bam_name}.rev.bam -bg -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph
   bedGraphToBigWig ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph ${chrsize} ${bigwig_dir}${sample}.libsize.normalized.rev.bw
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
