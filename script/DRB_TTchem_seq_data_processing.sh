@@ -142,9 +142,9 @@ do
     # mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_trimming_report.txt
 	fi
 	if [[ "${sequencing_type}" == "PE" ]]; then
-		### fastQC
+    ### fastQC
     fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
-	  ### trim adaotors & fastQC on trimmed reads
+    ### trim adaotors & fastQC on trimmed reads
 	  trim_galore --cores ${cores} --paired --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
     # ### rename files with sample name
     # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R1_fastqc.html
