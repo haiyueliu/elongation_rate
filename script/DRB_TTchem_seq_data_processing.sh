@@ -103,8 +103,8 @@ do
     ### extract UMI sequenc from read2 and add it to read headers of read1
     ### umi_tools is not multiple threading
     #########################################
-    umi_tools extract --extract-method=string --bc-pattern=${UMI_sequence} --stdin ${umi_read} --read2-in=${R1_in} --read2-out=${R1_out} 
-  fi 
+    umi_tools extract --extract-method=string --bc-pattern=${UMI_sequence} --stdin ${umi_read} --read2-in=${R1_in} --read2-out=${R1_out}
+  fi
   if [[ "${sequencing_type}" == "PE" ]]; then
     echo "Paired-end reads \n"
     echo "Extract UMIs from R2 and attach them to R1 and R3 read headers for $sample \n"
@@ -121,7 +121,7 @@ done
 ############################
 ### 2. QC & trim adaptor
 ############################
-module purge  
+module purge
 module load anaconda3/2021.11
 module load openjdk/13.0.1 perl/5.26.3 fastqc/0.11.9
 module load pigz trimgalore/0.6.6
@@ -131,28 +131,28 @@ if $UMI; then name_suffix="umi_attached"; else name_suffix=""; fi
 for sample in ${sample_names[@]}
 do
   echo "$sample : FastQC -- Adaptor trmming -- FastQC "
-	if [[ "${sequencing_type}" == "SE" ]]; then
-	  ### fastQC
+  if [[ "${sequencing_type}" == "SE" ]]; then
+    ### fastQC
     fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
-	  ### trim adaotors & fastQC on trimmed reads
-	  trim_galore --cores ${cores} --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
+    ### trim adaotors & fastQC on trimmed reads
+    trim_galore --cores ${cores} --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
     # ### rename files with sample name
     # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_fastqc.html
     # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_fastqc.zip
     # mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_trimming_report.txt
-	fi
-	if [[ "${sequencing_type}" == "PE" ]]; then
+  fi
+  if [[ "${sequencing_type}" == "PE" ]]; then
     ### fastQC
     fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
     ### trim adaotors & fastQC on trimmed reads
-	  trim_galore --cores ${cores} --paired --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
+    trim_galore --cores ${cores} --paired --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
     # ### rename files with sample name
     # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R1_fastqc.html
     # mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R2_fastqc.html
     # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R1_fastqc.zip
     # mv ${fastqc_dir}${sample}_R2_${name_suffix}_fastqc.zip ${fastqc_dir}${sample}_R2_fastqc.zip
     # mv ${trimmed_fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R1_trimming_report.txt
-	  # mv ${trimmed_fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R2_trimming_report.txt
+    # mv ${trimmed_fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}_trimming_report.txt ${trimmed_fastq_dir}${sample}_R2_trimming_report.txt
   fi
 done
 ###########################
@@ -166,39 +166,39 @@ mkdir -p ${tmp_dir}
 for sample in ${sample_names[@]}
 do
   echo "Mapping for $sample"
-	if [[ "${sequencing_type}" == "SE" ]]; then
+  if [[ "${sequencing_type}" == "SE" ]]; then
     STAR \
-  	  --runThreadN ${cores} \
-  	  --genomeDir ${index_dir} \
-  	  --readFilesIn ${trimmed_fastq_dir}${sample}_trimmed.fq.gz \
-    	--readFilesCommand zcat \
-    	--outSAMattributes NH HI AS NM MD XS \
-  	  --outSAMstrandField intronMotif \
-  	  --outSAMmultNmax 1 \
-  	  --outSAMunmapped None \
-  	  --outFileNamePrefix ${bam_dir}${sample}. \
-    	--outSAMtype BAM SortedByCoordinate \
-  	  --outTmpDir ${tmp_dir}${sample}
+      --runThreadN ${cores} \
+      --genomeDir ${index_dir} \
+      --readFilesIn ${trimmed_fastq_dir}${sample}_trimmed.fq.gz \
+      --readFilesCommand zcat \
+      --outSAMattributes NH HI AS NM MD XS \
+      --outSAMstrandField intronMotif \
+      --outSAMmultNmax 1 \
+      --outSAMunmapped None \
+      --outFileNamePrefix ${bam_dir}${sample}. \
+      --outSAMtype BAM SortedByCoordinate \
+      --outTmpDir ${tmp_dir}${sample}
   fi
   if [[ "${sequencing_type}" == "PE" ]]; then
     STAR \
-  	  --runThreadN ${cores} \
-  	  --genomeDir ${index_dir} \
-  	  --readFilesIn ${trimmed_fastq_dir}${sample}_val_1_trimmed.fq.gz ${trimmed_fastq_dir}${sample}_val_2_trimmed.fq.gz \
-    	--readFilesCommand zcat \
-    	--outSAMattributes NH HI AS NM MD XS \
-  	  --outSAMstrandField intronMotif \
-  	  --outSAMmultNmax 1 \
-  	  --outSAMunmapped None \
-  	  --outFileNamePrefix ${bam_dir}${sample}. \
-    	--outSAMtype BAM SortedByCoordinate \
-  	  --outTmpDir ${tmp_dir}${sample}
+      --runThreadN ${cores} \
+      --genomeDir ${index_dir} \
+      --readFilesIn ${trimmed_fastq_dir}${sample}_val_1_trimmed.fq.gz ${trimmed_fastq_dir}${sample}_val_2_trimmed.fq.gz \
+      --readFilesCommand zcat \
+      --outSAMattributes NH HI AS NM MD XS \
+      --outSAMstrandField intronMotif \
+      --outSAMmultNmax 1 \
+      --outSAMunmapped None \
+      --outFileNamePrefix ${bam_dir}${sample}. \
+      --outSAMtype BAM SortedByCoordinate \
+      --outTmpDir ${tmp_dir}${sample}
   fi
-	### index bam files
-	samtools index -@ ${cores} ${bam_dir}${sample}.Aligned.sortedByCoord.out.bam
-	### remove immediate files
-	rm ${bam_dir}${sample}.Log.out
-	rm ${bam_dir}${sample}.Log.progress.out
+  ### index bam files
+  samtools index -@ ${cores} ${bam_dir}${sample}.Aligned.sortedByCoord.out.bam
+  ### remove immediate files
+  rm ${bam_dir}${sample}.Log.out
+  rm ${bam_dir}${sample}.Log.progress.out
 done
 ########################################
 ### 4. Extract uniquely mapping reads
@@ -242,6 +242,7 @@ fi
 ## In our data, we observed the reads that mapped across exon-intron-exons junctions can give high background noise. These reads are a small (<2%) amount of the total reads but they are highly present in control samples in which the DRB were not washed out. Therefore, we suspect those reads are mainly non-specific enrichment. We removed these reads for the downstream analysis.
 module purge
 module load samtools/1.15.1
+# split splices and unspliced alignments - requires htslib>1.15
 for sample in ${sample_names[@]}
 do
   echo "split unspliced and spliced reads for ${sample}"
@@ -304,7 +305,6 @@ done
 module purge
 module load samtools/1.15.1
 reads_number="${work_dir}/analysis/reads_number.txt"
-# printf "sample_name\t\total\t\dedup\t\unimapped\t\human\t\yeast\n" > ${reads_number}
 if $UMI; then
   printf '%s\t' 'sample_name' 'unimapper' 'deduped' 'unspliced' 'human_unspliced' > ${reads_number}
   printf '\n' >> ${reads_number}
@@ -315,7 +315,7 @@ fi
 
 for sample in ${sample_names[@]}
 do
-  echo $sample
+  echo "Count mapped reads for $sample"
   n_unimapper=$(samtools view --threads ${cores} -c ${bam_dir}${sample}.unimappers.bam)
   if $UMI; then
     bam_name=${bam_dir}${sample}.unimappers.deduped
@@ -324,9 +324,9 @@ do
     bam_name=${bam_dir}${sample}.unimappers
   fi
   ### count the total reads in the exon-intron-exon reads removed bam files
-  n_unspliced=$(samtools view --threads ${cores} -c ${bam_name}.unspliced.bam)
+  n_unspliced=$(samtools view --threads ${cores} -c ${bam_dir}${sample}.unspliced.bam)
   ### only count human reads in the unspliceded bam files
-  n_human_unspliced=$(samtools idxstats ${bam_name}.unspliced.bam | awk '/^chr/ {s+=$3}END{print s}')
+  n_human_unspliced=$(samtools idxstats ${bam_dir}${sample}.unspliced.bam | awk '/^chr/ {s+=$3}END{print s}')
   ### save the numbers to file
   if $UMI; then
     echo $sample | awk -v OFS="\t" -v unimapper="$n_unimapper" -v deduped="$n_deduped" -v unspliced="$n_unspliced" -v human_unspliced="$n_human_unspliced" '{print $0, unimapper, deduped, unspliced, human_unspliced}' >> ${reads_number}
@@ -419,6 +419,3 @@ do
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph
 done
-##############################
-### end
-##############################
