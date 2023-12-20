@@ -240,21 +240,6 @@ fi
 ### 6. Removal of exon-intron-exon reads
 ###############################################
 ## In our data, we observed the reads that mapped across exon-intron-exons junctions can give high background noise. These reads are a small (<2%) amount of the total reads but they are highly present in control samples in which the DRB were not washed out. Therefore, we suspect those reads are mainly non-specific enrichment. We removed these reads for the downstream analysis.
-# module purge
-# conda activate ngs     ### this is to activate python (pysam is needed)
-# split_reads_script="${script_dir}split_unspliced_spliced_reads.py"
-# for sample in ${sample_names[@]}
-# do
-#   echo "split unspliced and spliced reads for ${sample}"
-#   ### bam files
-#   if $UMI; then
-#     bam_name=${bam_dir}${sample}.unimappers.deduped
-#   else
-#     bam_name=${bam_dir}${sample}.unimappers
-#   fi
-#   ~/.conda/envs/ngs/bin/python ${split_reads_script} ${bam_name}.bam ${bam_name}.unspliced.bam ${bam_name}.splice.junction.bam
-# done
-# conda deativate
 module purge
 module load samtools/1.15.1
 for sample in ${sample_names[@]}
@@ -266,8 +251,10 @@ do
   else
     bam_name=${bam_dir}${sample}.unimappers
   fi
-  samtools view --threads ${cores} -he '[XS]' ${bam_name}.bam -o ${bam_name}.unspliced.bam
-  samtools view --threads ${cores} -he '![XS]' ${bam_name}.bam -o ${bam_name}.spliced.bam
+  samtools view --threads ${cores} -he '[XS]' ${bam_name}.bam -o ${bam_dir}${sample}.spliced.bam
+  samtools view --threads ${cores} -he '![XS]' ${bam_name}.bam -o ${bam_dir}${sample}.unspliced.bam
+  samtools index -@ ${cores} ${bam_dir}${sample}.spliced.bam
+  samtools index -@ ${cores} ${bam_dir}${sample}.unspliced.bam
 done
 ###############################################################
 ### 7. Split reads transcribed from forward and reverse strands
@@ -277,7 +264,6 @@ module load samtools/1.15.1
 for sample in ${sample_names[@]}
 do
   bam_name=${bam_dir}${sample}.unspliced
-  samtools index -@ ${cores} ${bam_name}.bam
   echo "Split forward and reverse strand $sample"
   if [[ "${sequencing_type}" == "SE" && "${strandedness}" == "reverse-stranded" ]]; then
     ### Forward strand reads -- R1 mapped to reverse strand (include read reverse strand 16)
