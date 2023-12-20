@@ -240,9 +240,23 @@ fi
 ### 6. Removal of exon-intron-exon reads
 ###############################################
 ## In our data, we observed the reads that mapped across exon-intron-exons junctions can give high background noise. These reads are a small (<2%) amount of the total reads but they are highly present in control samples in which the DRB were not washed out. Therefore, we suspect those reads are mainly non-specific enrichment. We removed these reads for the downstream analysis.
+# module purge
+# conda activate ngs     ### this is to activate python (pysam is needed)
+# split_reads_script="${script_dir}split_unspliced_spliced_reads.py"
+# for sample in ${sample_names[@]}
+# do
+#   echo "split unspliced and spliced reads for ${sample}"
+#   ### bam files
+#   if $UMI; then
+#     bam_name=${bam_dir}${sample}.unimappers.deduped
+#   else
+#     bam_name=${bam_dir}${sample}.unimappers
+#   fi
+#   ~/.conda/envs/ngs/bin/python ${split_reads_script} ${bam_name}.bam ${bam_name}.unspliced.bam ${bam_name}.splice.junction.bam
+# done
+# conda deativate
 module purge
-conda activate ngs     ### this is to activate python (pysam is needed)
-split_reads_script="${script_dir}split_unspliced_spliced_reads.py"
+module load samtools/1.15.1
 for sample in ${sample_names[@]}
 do
   echo "split unspliced and spliced reads for ${sample}"
@@ -252,9 +266,9 @@ do
   else
     bam_name=${bam_dir}${sample}.unimappers
   fi
-  ~/.conda/envs/ngs/bin/python ${split_reads_script} ${bam_name}.bam ${bam_name}.clean.bam ${bam_name}.splice.junction.bam
+  samtools view --threads ${cores} -he '[XS]' ${bam_name}.bam -o ${bam_name}.unspliced.bam
+  samtools view --threads ${cores} -he '![XS]' ${bam_name}.bam -o ${bam_name}.spliced.bam
 done
-conda deativate
 ###############################################################
 ### 7. Split reads transcribed from forward and reverse strands
 ###############################################################
@@ -262,7 +276,7 @@ module purge
 module load samtools/1.15.1
 for sample in ${sample_names[@]}
 do
-  bam_name=${bam_dir}${sample}.clean
+  bam_name=${bam_dir}${sample}.unspliced
   samtools index -@ ${cores} ${bam_name}.bam
   echo "Split forward and reverse strand $sample"
   if [[ "${sequencing_type}" == "SE" && "${strandedness}" == "reverse-stranded" ]]; then
@@ -306,10 +320,10 @@ module load samtools/1.15.1
 reads_number="${work_dir}/analysis/reads_number.txt"
 # printf "sample_name\t\total\t\dedup\t\unimapped\t\human\t\yeast\n" > ${reads_number}
 if $UMI; then
-  printf '%s\t' 'sample_name' 'unimapper' 'deduped' 'clean' 'human' > ${reads_number}
+  printf '%s\t' 'sample_name' 'unimapper' 'deduped' 'unspliced' 'human_unspliced' > ${reads_number}
   printf '\n' >> ${reads_number}
 else
-  printf '%s\t' 'sample_name' 'unimapper' 'clean' 'human' > ${reads_number}
+  printf '%s\t' 'sample_name' 'unimapper' 'unspliced' 'human_unspliced' > ${reads_number}
   printf '\n' >> ${reads_number}
 fi
 
@@ -324,14 +338,14 @@ do
     bam_name=${bam_dir}${sample}.unimappers
   fi
   ### count the total reads in the exon-intron-exon reads removed bam files
-  n_clean=$(samtools view --threads ${cores} -c ${bam_name}.clean.bam)
-  ### only count human reads in the cleaned bam files
-  n_human_clean=$(samtools idxstats ${bam_name}.clean.bam | awk '/^chr/ {s+=$3}END{print s}')
+  n_unspliced=$(samtools view --threads ${cores} -c ${bam_name}.unspliced.bam)
+  ### only count human reads in the unspliceded bam files
+  n_human_unspliced=$(samtools idxstats ${bam_name}.unspliced.bam | awk '/^chr/ {s+=$3}END{print s}')
   ### save the numbers to file
   if $UMI; then
-    echo $sample | awk -v OFS="\t" -v unimapper="$n_unimapper" -v deduped="$n_deduped" -v clean="$n_clean" -v human_clean="$n_human_clean" '{print $0, unimapper, deduped, clean, human_clean}' >> ${reads_number}
+    echo $sample | awk -v OFS="\t" -v unimapper="$n_unimapper" -v deduped="$n_deduped" -v unspliced="$n_unspliced" -v human_unspliced="$n_human_unspliced" '{print $0, unimapper, deduped, unspliced, human_unspliced}' >> ${reads_number}
   else
-    echo $sample | awk -v OFS="\t" -v unimapper="$n_unimapper" -v clean="$n_clean" -v human_clean="$n_human_clean" '{print $0, unimapper, clean, human_clean}' >> ${reads_number}
+    echo $sample | awk -v OFS="\t" -v unimapper="$n_unimapper" -v unspliced="$n_unspliced" -v human_unspliced="$n_human_unspliced" '{print $0, unimapper, unspliced, human_unspliced}' >> ${reads_number}
   fi
 done
 #########################################
