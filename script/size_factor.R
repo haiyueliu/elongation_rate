@@ -88,6 +88,3 @@ cat("Normalization factors for each sample: \n")
 yeast_size_factor <- data.frame(sample_id = names(sizeFactors(dds)), size_factor=sizeFactors(dds))
 yeast_size_factor
 write.table(yeast_size_factor, paste0(data.dir, "size_factors_deseq2.txt"), quote=F, sep="\t", row.names =FALSE)
-
-sample.info %<>% left_join(yeast_size_factor)
-write.table(sample.info, paste0(data.dir, "sample.info.txt"), quote=FALSE, sep="\t", row.names = FALSE)
