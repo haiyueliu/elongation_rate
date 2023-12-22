@@ -383,12 +383,13 @@ reads_number="${work_dir}analysis/reads_number.txt"
 [ ! -f ${reads_number} ] && echo "Reads number file DOES NOT exists!"
 for sample in ${sample_names[@]}
 do
-  # echo ${sample}
-  if $UMI; then
-    bam_name=${bam_dir}${sample}.unimappers.deduped
-  else
-    bam_name=${bam_dir}${sample}.unimappers
-  fi
+  # # echo ${sample}
+  # if $UMI; then
+  #   bam_name=${bam_dir}${sample}.unimappers.deduped
+  # else
+  #   bam_name=${bam_dir}${sample}.unimappers
+  # fi
+  bam_name=${bam_dir}${sample}.unspliced
   ###############################
   ### normalized to spike-ins
   ### bam -> bedgraph -> bigwig 
@@ -419,3 +420,10 @@ do
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph
 done
+##############################
+#### Remove intermediate files
+##############################
+
+##############################
+### end
+##############################
