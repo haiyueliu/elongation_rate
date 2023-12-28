@@ -124,7 +124,7 @@ for (sample in names(cov.list)){
 
 We suggest to perform DRB/TTchem-seq2 with control samples in which DRB is not washed out, but 4sU is incorporated for the same times as the other samples to estimate the background signal levels. 
 
-If you do have control samples, the DRB release samples are noramlized to controls samples. If not, this step can be ignored. 
+If you do have control samples, the DRB release samples are normalized to controls samples. If not, this step can be ignored. 
 
 ```{r}
 #### Mean coverage across replicates
