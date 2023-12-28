@@ -108,7 +108,9 @@ for (sample in sample.info$sample_name){
   ### normalize read depths to pre-calculated sample size factors (i.e. spike-in size factors or library sizes)
   cov.list[[sample]] <- lapply(cov.list[[sample]], function(x){round(x/size.factor, 3)})
 }
-
+rm(cov.fwd)
+rm(cov.rev)
+gc()
 ### keep the same genes for all samples
 common.genes <- Reduce(intersect, lapply(cov.list, names))
 for(sample in names(cov.list)){
