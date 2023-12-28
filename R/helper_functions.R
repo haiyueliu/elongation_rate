@@ -20,7 +20,7 @@ suppressMessages(suppressWarnings(library(cowplot)))
 filter_overlapping_genes <- function(gtf = gtf.file,                    ### full path to annotation file in gtf format (Gencode / Ensembl)
                                      lower.length = min.genewidth,
                                      upper.length = max.genewidth,
-                                     count_data = NULL) {
+                                     count.data = NULL) {
   
   ### read gtf file as gene range file
   gtf <- rtracklayer::import(gtf.file)
@@ -29,9 +29,9 @@ filter_overlapping_genes <- function(gtf = gtf.file,                    ### full
   gene.gr$gene_width <- width(gene.gr)
   
   ### filter genes that overlap with other genes on the same strand. If count_data if provided, only look at genes that are expressed in the data
-  if (!is.null(count_data)) {
-    count_data <- count_data[rowSums(count_data) >= 2, ]
-    gene.gr.expressed <- gene.gr[gene.gr$gene_id %in% rownames(count_data)]
+  if (!is.null(count.data)) {
+    count.data <- count.data[rowSums(count.data) >= 2, ]
+    gene.gr.expressed <- gene.gr[gene.gr$gene_id %in% rownames(count.data)]
     gene.gr <- gene.gr.expressed[countOverlaps(gene.gr.expressed, gene.gr.expressed, ignore.strand=FALSE) == 1, ]
   } else{
     gene.gr <- gene.gr[countOverlaps(gene.gr, gene.gr, ignore.strand=FALSE) == 1, ]
@@ -49,7 +49,8 @@ filter_overlapping_genes <- function(gtf = gtf.file,                    ### full
 ### compare the mean coverage per gene across samples 
 #######################################################
 filter_low_expr_genes <- function(cov.list = cov.list,
-                                  mean.cov.cutoff = 0.01){
+                                  mean.cov.cutoff = 0.01,
+                                  control.samples = control.sample.names){
   ### calculate the mean coverage across all position for each gene
   mean.cov.list <- lapply(cov.list, function(x){ unlist(lapply(x, function(y) {mean(y)})) })
   mean.cov.df <- as.data.frame(mean.cov.list)
@@ -67,15 +68,15 @@ filter_low_expr_genes <- function(cov.list = cov.list,
   ### keep highly expressed genes
   genes.keep <- 
     mean.cov.df %>%
-    filter(sample %notin% control.sample.names) %>%
+    filter(sample %notin% control.samples) %>%
     filter(mean.cov >= mean.cov.cutoff) %>%
     group_by(gene_id) %>%
     summarise(n_sample = n()) %>%
     ungroup %>%
-    filter(n_sample == nrow(sample.info) - length(control.sample.names))
+    filter(n_sample == length(cov.list) - length(control.samples))
   genes.keep <- genes.keep$gene_id
   ### return kept gene ids
-  return(list(mean_cov_plot = p_mean_cov, 
+  return(list(mean.cov.plot = p_mean_cov, 
               genes.keep = genes.keep))
 }
 ##################################

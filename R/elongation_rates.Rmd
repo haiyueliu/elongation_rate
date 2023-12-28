@@ -29,7 +29,6 @@ suppressMessages(suppressWarnings(library(ggplot2)))
 `%notin%` <- Negate(`%in%`)
 ```
 
-
 ```{r helper_functions}
 source("~/Documents/GitHub/elongation_rate/R/helper_functions.R")
 ```
@@ -54,7 +53,7 @@ max.genewidth <- 300000
 gene.gr <- filter_overlapping_genes(gtf = gtf.file,                     ### full path to annotation file in gtf format (Gencode / Ensembl)
                                     lower.length = min.genewidth,
                                     upper.length = max.genewidth,
-                                    count_data = NULL)                  ### if count.data is provided, we only look at genes that are expressed in the data
+                                    count.data = count.data)                  ### if count.data is provided, we only look at genes that are expressed in the data
 gene.gr$strand <- strand(gene.gr)
 cat("The number of genes left after filtering ovelapping genes and limiting gene lengths:", length(gene.gr))
 
@@ -77,8 +76,8 @@ for (sample in sample.info$sample_name){
   print(sample)
   ### retrieve the size factor for each sample from sample.info table
   size.factor = sample.info$size_factor[sample.info$sample_name==sample]
-  bam.fwd.file = paste0(bam.dir, sample, ".test.fwd.bam")
-  bam.rev.file = paste0(bam.dir, sample, ".test.rev.bam")
+  bam.fwd.file = paste0(bam.dir, sample, ".unspliced.fwd.bam")
+  bam.rev.file = paste0(bam.dir, sample, ".unspliced.rev.bam")
   ### count read depth for genes on the forward and reverse strands
   cov.fwd <- bamsignals::bamCoverage(bampath = bam.fwd.file,
                                      gr = gene.gr.fwd,
@@ -108,6 +107,7 @@ for (sample in sample.info$sample_name){
   ### normalize read depths to pre-calculated sample size factors (i.e. spike-in size factors or library sizes)
   cov.list[[sample]] <- lapply(cov.list[[sample]], function(x){round(x/size.factor, 3)})
 }
+
 rm(cov.fwd)
 rm(cov.rev)
 gc()
@@ -116,6 +116,7 @@ common.genes <- Reduce(intersect, lapply(cov.list, names))
 for(sample in names(cov.list)){
   cov.list[[sample]] <- cov.list[[sample]][common.genes]
 }
+cat("Count bp-resolution read depths for", length(cov.list[[1]]), "genes. \n")
 ```
 
 ## Filter lowly expressed genes
@@ -124,7 +125,8 @@ To save time and space for downstream analysis, we only focus on genes with high
 
 ```{r}
 mean.cov.cutoff <- 0.01
-genes.keep <- filter_low_expr_genes(cov.list = cov.list, mean.cov.cutoff = mean.cov.cutoff)$genes.keep
+genes.keep <- filter_low_expr_genes(cov.list = cov.list, mean.cov.cutoff = mean.cov.cutoff, control.samples = control.sample.names)$genes.keep
+cat("Keep ", length(genes.keep), " genes after filtering low expression genes. \n")
 for (sample in names(cov.list)){
   cov.list[[sample]] <- cov.list[[sample]][genes.keep]
 }
@@ -182,6 +184,8 @@ for (sample in names(norm.cov.list)){
   print(sample)
   norm.spline.list[[sample]] <- sapply(norm.cov.list[[sample]], function(x){pmax(0, round(smooth.spline(1:length(x), x, spar=gene.spar)$y, 3))})
 }
+saveRDS(norm.cov.list, paste0(output.dir, "norm.cov.list.Rds"))
+saveRDS(norm.spline.list, paste0(output.dir, "norm.spline.list.Rds"))
 ```
 
 ## Wave fronts identification
@@ -245,3 +249,6 @@ Save data.
 write.table(rate_df, paste0(output.dir, "elongation_rate_tb.txt"), quote=FALSE, sep="\t", row.names=FALSE)
 ```
 
+```{r}
+sessionInfo()
+```
