@@ -101,10 +101,18 @@ for (sample in sample.info$sample_name){
   cov.list[[sample]] <- c(cov.fwd, cov.rev)
   
   ### remove genes that do not express in these samples
-  cov.list[[sample]] <- cov.list[[sample]][lapply(cov.list[[sample]], sum) > 0]
+  if(!(sample %in% control.sample.names)){
+    cov.list[[sample]] <- cov.list[[sample]][lapply(cov.list[[sample]], sum) > 0]
+  }
   
   ### normalize read depths to pre-calculated sample size factors (i.e. spike-in size factors or library sizes)
   cov.list[[sample]] <- lapply(cov.list[[sample]], function(x){round(x/size.factor, 3)})
+}
+
+### keep the same genes for all samples
+common.genes <- Reduce(intersect, lapply(cov.list, names))
+for(sample in names(cov.list)){
+  cov.list[[sample]] <- cov.list[[sample]][common.genes]
 }
 ```
 
