@@ -31,7 +31,7 @@ filter_overlapping_genes <- function(gtf = gtf.file,                    ### full
   ### filter genes that overlap with other genes on the same strand. If count_data if provided, only look at genes that are expressed in the data
   if (!is.null(count_data)) {
     count_data <- count_data[rowSums(count_data) >= 2, ]
-    genes.gr.expressed <- gene.gr[gene.gr$gene_id %in% rownames(count_data)]
+    gene.gr.expressed <- gene.gr[gene.gr$gene_id %in% rownames(count_data)]
     gene.gr <- gene.gr.expressed[countOverlaps(gene.gr.expressed, gene.gr.expressed, ignore.strand=FALSE) == 1, ]
   } else{
     gene.gr <- gene.gr[countOverlaps(gene.gr, gene.gr, ignore.strand=FALSE) == 1, ]
