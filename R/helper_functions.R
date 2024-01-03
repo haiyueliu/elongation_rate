@@ -61,8 +61,11 @@ filter_low_expr_genes <- function(cov.list = cov.list,
   ### distributions
   p_mean_cov <-
     mean.cov.df %>%
-    ggplot(aes( mean.cov)) %>%
-    + geom_histogram() %>%
+    ggplot(aes(mean.cov)) %>%
+    + geom_histogram(bins=50, color="grey") %>%
+    + geom_vline(xintercept = mean.cov.cutoff, linetype="dashed") %>%
+    + scale_x_log10() %>%
+    + scale_y_log10() %>%
     + facet_wrap(~sample, ncol=2) %>%
     + theme_bw()
   ### keep highly expressed genes
