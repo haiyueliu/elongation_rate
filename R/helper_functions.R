@@ -79,7 +79,8 @@ filter_low_expr_genes <- function(cov.list = cov.list,
     filter(n_sample == length(cov.list) - length(control.samples))
   genes.keep <- genes.keep$gene_id
   ### return kept gene ids
-  return(list(mean.cov.plot = p_mean_cov, 
+  return(list(mean.cov.df = mean.cov.df,
+              mean.cov.plot = p_mean_cov, 
               genes.keep = genes.keep))
 }
 ##################################
