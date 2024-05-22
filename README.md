@@ -35,7 +35,7 @@ Download the DRB_TTchem_seq_data_processing.sh script in the script folder and m
   * STAR alignment
   * Extract uniquely mapping reads
   * Deduplication (optional)
-  * Removal of exon-intron-exon mapping reads
+  * Removal of exon-exon junction mapping reads
   * Split forward and reverse reads
   * Count mapped reads
   * Quantify gene count
