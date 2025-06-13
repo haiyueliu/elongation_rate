@@ -36,21 +36,19 @@
 #################################################    
 ### Configuration: this section is project-specific. You need to modify those lines based on your own project setup. 
 ### Tools executables: all the tools are called via module load in this pipeline. If you use a diffrent system, you could change those module load lines.
-cores=10                                                                              ### required; 
-work_dir="/maps/projects/dan1/people/mjh723/projects/DRB_TTchem_seq/"                 ### required; project directory; your fastq folder containing all raw reads should have been loaded into this folder 
-script_dir="${work_dir}script/"                                                       ### required; script direcoty. The R function "size_factor.R" should be found there
-sample_sheet="${work_dir}script/samplesheet.tsv"                                      ### required; one example tsv file can be found in this github repository. The column names and orders matter for the pipeline 
-sequencing_type="SE"                                                                  ### required; options: "SE", "PE"
-UMI=true                                                                              ### required; options: true, false
-UMI_sequence="NNNNNNNNNNN"                                                            ### required if UMI=true; the length of UMIs can vary depends on the project
-strandedness="reverse-stranded"                                                       ### required; options: "reverse-stranded", "stranded", "unstranded"
-fastq_suffix=".fastq.gz"                                                              ### required; options: ".fastq.gz", ".fq.gz"                                                                 
+cores=10                                                    ### required; 
+work_dir=                                                   ### required; project directory; your fastq folder containing all raw reads should have been loaded into this folder 
+script_dir="${work_dir}script/"                             ### required; script direcoty. The R function "size_factor.R" should be found there
+sample_sheet="${work_dir}script/samplesheet.tsv"            ### required; one example tsv file can be found in this github repository. The column names and orders matter for the pipeline, one exaple is shown in the data the test_data directory
+sequencing_type="SE"                                        ### required; options: "SE", "PE"
+UMI=true                                                    ### required; options: true, false
+UMI_sequence="NNNNNNNNNNN"                                  ### required if UMI=true; the length of UMIs can vary depends on the project
+strandedness="reverse-stranded"                             ### required; options: "reverse-stranded", "stranded", "unstranded"
+fastq_suffix=".fastq.gz"                                    ### required; options: ".fastq.gz", ".fq.gz"                                                                 
 ### index & annotation
-reference_dir="/maps/projects/dan1/people/mjh723/reference/gencode/"
-# genome_fasta="${reference_dir}/genome/human_yeast/GRCh38_sacCer3.fa"
-index_dir="${reference_dir}index/GRCh38.gencode.v43_sacCer3.108_star_2.7.9a_index"
-gtf="${reference_dir}annotation/human_yeast/GRCh38.gencode.v43_sacCer3.108.gtf"
-chrsize="${index_dir}/chrNameLength.txt"
+index_dir=                                                  ### required; your STAR index directory (e.g. GRCh38.gencode.v43_sacCer3.108_star_2.7.9a_index)
+gtf=                                                        ### required; the annotation gtf file (e.g. GRCh38.gencode.v43_sacCer3.108.gtf)
+chrsize="${index_dir}/chrNameLength.txt"                    ### required; the chromosome size file which can be find in the star index directory 
 #################################################
 #################################################
 
@@ -85,7 +83,7 @@ mkdir -p ${analysis_dir}
 cd ${work_dir}
 
 ########## Data processing ###############
-
+set -e
 #########################################
 ### 1. Attach UMIs in R2 to header of R1
 #########################################
