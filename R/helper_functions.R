@@ -113,6 +113,7 @@ wave_front_calling <- function(y,
   ### Find the index of the minimum cosine value
   ### add one constraint (wave fronts need to be at least 1kb downstream of the TSS)
   whichmin <- offset + which.min(cosine_values[seq(offset+1, y_len)])
-  ### whichmin <- ifelse(is.nae(whichmin), 0, whichmin)
+  ### in case of flat spline and no wave front, take 0 
+  whichmin <- ifelse(is.nae(whichmin), 0, whichmin)
   return(whichmin)
 }
