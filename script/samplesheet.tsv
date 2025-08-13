@@ -1,4 +1,4 @@
-cell_line	sample_id	sample_name	sample	rep
+cell_line	sample_id	sample_name	sample	rep	size_factor
 U2OS	U2OS_DRB_noR_rep1_S13	DRB_noR_rep1	DRB_noR	rep1
 U2OS	U2OS_DRB_noR_rep2_S18	DRB_noR_rep2	DRB_noR	rep2
 U2OS	U2OS_DRB_5minR_rep1_S14	DRB_5minR_rep1	DRB_5minR	rep1
