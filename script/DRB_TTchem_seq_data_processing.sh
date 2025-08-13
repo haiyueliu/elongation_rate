@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=10                 # Number of CPU cores per task
 #SBATCH --mem=32gb                         # Job memory request
 #SBATCH --time=0-20:00:00
-#SBATCH --output=DRB_TTchem_seq2_log%j.log
+#SBATCH --output=DRB_TTchem_seq2_log%j.logfcrea
 
 set -euo pipefail
 
@@ -15,11 +15,11 @@ set -euo pipefail
 ### Author: Haiyue Liu
 ### Date: Initial version 15-12-2023
 ### This is the strandard pipeline for DRB/TTchem-seq2 data processing. 
-### Libraries: single-ended reversely-stranded reads with UMI (11-mer) sequences. We demultiplexed the UMI sequences as R2 which are attached to R1 as headers in our pileline. 
-### We also use yeast spike-ins for normalization of the nascent RNA libraries. For this, we creasted a huamn-yeast combine genome reference for mapping. 
+### Libraries: single-ended reversely-stranded reads with UMI (11-mer) sequences. We demultiplexed the UMI sequences as R2 which are attached to R1 as headers in our pipeline. 
+### We also use yeast spike-ins for normalization of the nascent RNA libraries. For this, we created a human-yeast combine genome reference for mapping. 
 ### This main step for data processing in this pipeline are:
-### 1. Attache UMIs to reads header
-### 2. Adaptor trimming & fastqc 
+### 1. Attach UMIs to reads header
+### 2. Adapter trimming & fastqc 
 ### 3. STAR alignment
 ### 4. Extract uniquely mapping reads
 ### 5. Deduplication (optional)
@@ -32,7 +32,7 @@ set -euo pipefail
 #############################################
 
 #################################################
-### CONFIGUREATION
+### CONFIGURATION
 #################################################
 ### Configuration: this section is project-specific. You need to modify those lines based on your own project setup. 
 ### Tools executables: all the tools are called via module load in this pipeline. If you use a diffrent system, you could change those module load lines.
@@ -54,12 +54,12 @@ chrsize="${index_dir}/chrNameLength.txt"                    ### required; the ch
 ############################
 ### CHECK CONFIG PARAMETERS
 ############################
-[ ! -d ${work_dir} ] && echo "ERROR: Working directory DOES NOT exists." && exit
-[ ! -f ${sample_sheet} ] && echo "ERROR: Samplesheet file DOES NOT exists." && exit
-[ ! -f ${script_dir}size_factor.R ] && echo "ERROR: Function of size_factor.R file DOES NOT exists." && exit
-[ ! -f ${index_dir} ] && echo "ERROR: Index directory DOES NOT exists." && exit
-[ ! -f ${gtf} ] && echo "ERROR: Annotation gtf file DOES NOT exists." && exit
-[ ! -f ${chrsize} ] && echo "ERROR: Chromosoze size file DOES NOT exists." && exit
+[ ! -d ${work_dir} ] && echo "ERROR: Working directory DOES NOT exist." && exit
+[ ! -f ${sample_sheet} ] && echo "ERROR: Samplesheet file DOES NOT exist." && exit
+[ ! -d ${script_dir}size_factor.R ] && echo "ERROR: Function of size_factor.R file DOES NOT exist." && exit
+[ ! -d ${index_dir} ] && echo "ERROR: Index directory DOES NOT exist." && exit
+[ ! -f ${gtf} ] && echo "ERROR: Annotation gtf file DOES NOT exist." && exit
+[ ! -f ${chrsize} ] && echo "ERROR: Chromosome size file DOES NOT exist." && exit
 
 ############################
 ### SAMPLE ID & NAME
@@ -70,7 +70,7 @@ sample_names=$(cat $sample_sheet | awk 'NR>1 {print $3}')
 #############################
 ### DIRECTORIES
 #############################
-### As far as the work_dir is given, these are automatically creasted.  
+### As far as the work_dir is given, these are automatically created.  
 fastq_dir="${work_dir}fastq/"
 fastqc_dir="${work_dir}fastqc/"
 trimmed_fastq_dir="${work_dir}trimmed_fastq/"
@@ -123,7 +123,7 @@ do
   fi
 done
 ############################
-### 2. QC & trim adaptor
+### 2. QC & trim adapter
 ############################
 module purge
 module load anaconda3/2021.11
@@ -131,14 +131,14 @@ module load openjdk/13.0.1 perl/5.26.3 fastqc/0.11.9
 module load pigz trimgalore/0.6.6
 module load dangpu_libs python/3.7.13 cutadapt/4.1
 ### match the strings between fastq.gz(fq.gz) and sample_id, can be empty string
-if $UMI; then name_suffix="umi_attached"; else name_suffix=""; fi
+if [[ "$UMI" == true ]]; then name_suffix="umi_attached"; else name_suffix=""; fi
 for sample in ${sample_names[@]}
 do
-  echo "$sample : FastQC -- Adaptor trmming -- FastQC "
+  echo "$sample : FastQC -- Adapter trmming -- FastQC "
   if [[ "${sequencing_type}" == "SE" ]]; then
     ### fastQC
     fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
-    ### trim adaotors & fastQC on trimmed reads
+    ### trim adapters & fastQC on trimmed reads
     trim_galore --cores ${cores} --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix}
     # ### rename files with sample name
     # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_fastqc.html
@@ -148,7 +148,7 @@ do
   if [[ "${sequencing_type}" == "PE" ]]; then
     ### fastQC
     fastqc -t ${cores} -o ${fastqc_dir} ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
-    ### trim adaotors & fastQC on trimmed reads
+    ### trim adapters & fastQC on trimmed reads
     trim_galore --cores ${cores} --paired --basename ${sample} --output_dir ${trimmed_fastq_dir} --fastqc --fastqc_args "-o ${fastqc_dir} -t ${cores}" ${fastq_dir}${sample}_R1_${name_suffix}${fastq_suffix} ${fastq_dir}${sample}_R2_${name_suffix}${fastq_suffix}
     # ### rename files with sample name
     # mv ${fastqc_dir}${sample}_R1_${name_suffix}_fastqc.html ${fastqc_dir}${sample}_R1_fastqc.html
@@ -230,7 +230,7 @@ module load parallel
 module load dangpu_libs python/3.7.13 umi_tools/1.1.4
 module load samtools/1.15.1
 ### DRB_20minR_rep1.deduped.bam takes 21.90361h
-if $UMI; then
+if [[ "$UMI" == true ]]; then
   echo "deduplication"
   for sample in ${sample_names}
   do
@@ -251,7 +251,7 @@ for sample in ${sample_names[@]}
 do
   echo "split unspliced and spliced reads for ${sample}"
   ### bam files
-  if $UMI; then
+  if [[ "$UMI" == true ]]; then
     bam_name=${bam_dir}${sample}.unimappers.deduped
   else
     bam_name=${bam_dir}${sample}.unimappers
@@ -309,7 +309,7 @@ done
 module purge
 module load samtools/1.15.1
 reads_number="${work_dir}/analysis/reads_number.txt"
-if $UMI; then
+if [[ "$UMI" == true ]]; then
   printf '%s\t' 'sample_name' 'unimapper' 'deduped' 'unspliced' 'human_unspliced' > ${reads_number}
   printf '\n' >> ${reads_number}
 else
@@ -321,7 +321,7 @@ for sample in ${sample_names[@]}
 do
   echo "Count mapped reads for $sample"
   n_unimapper=$(samtools view --threads ${cores} -c ${bam_dir}${sample}.unimappers.bam)
-  if $UMI; then
+  if [[ "$UMI" == true ]]; then
     bam_name=${bam_dir}${sample}.unimappers.deduped
     n_deduped=$(samtools view --threads ${cores} -c ${bam_name}.bam)
   else
@@ -332,7 +332,7 @@ do
   ### only count human reads in the unspliceded bam files
   n_human_unspliced=$(samtools idxstats ${bam_dir}${sample}.unspliced.bam | awk '/^chr/ {s+=$3}END{print s}')
   ### save the numbers to file
-  if $UMI; then
+  if [[ "$UMI" == true ]]; then
     echo $sample | awk -v OFS="\t" -v unimapper="$n_unimapper" -v deduped="$n_deduped" -v unspliced="$n_unspliced" -v human_unspliced="$n_human_unspliced" '{print $0, unimapper, deduped, unspliced, human_unspliced}' >> ${reads_number}
   else
     echo $sample | awk -v OFS="\t" -v unimapper="$n_unimapper" -v unspliced="$n_unspliced" -v human_unspliced="$n_human_unspliced" '{print $0, unimapper, unspliced, human_unspliced}' >> ${reads_number}
@@ -345,7 +345,7 @@ module purge
 module load subread/2.0.3
 for sample in ${sample_names[@]}
 do
-  if $UMI; then
+  if [[ "$UMI" == true ]]; then
     bam_name=${bam_dir}${sample}.unimappers.deduped
   else
     bam_name=${bam_dir}${sample}.unimappers
@@ -380,15 +380,15 @@ module purge
 module load samtools/1.15.1
 module load bedtools/2.30.0
 module load GenomeToolset
-## Load the sample size factor file calcaulted using DESeq2 and the reads number file 
+## Load the sample size factor file calculated using DESeq2 and the reads number file 
 size_factors=${work_dir}"analysis/size_factors_deseq2.txt"
 reads_number="${work_dir}analysis/reads_number.txt"
-[ ! -f ${scale_factors} ] && echo "Size factor file DOES NOT exists!"
+[ ! -f ${size_factors} ] && echo "Size factor file DOES NOT exists!"
 [ ! -f ${reads_number} ] && echo "Reads number file DOES NOT exists!"
 for sample in ${sample_names[@]}
 do
   # # echo ${sample}
-  # if $UMI; then
+  # if [[ "$UMI" == true ]]; then
   #   bam_name=${bam_dir}${sample}.unimappers.deduped
   # else
   #   bam_name=${bam_dir}${sample}.unimappers
@@ -398,7 +398,7 @@ do
   ### normalized to spike-ins
   ### bam -> bedgraph -> bigwig 
   ###############################
-  scale_factor=$( cat ${size_factors} | awk -v s=$sample '{ if($1==s) {print $2^-1} }' )
+  scale_factor=$( awk -v s=$sample '{ if($1==s) {print $2^-1} }' ${size_factors} )
   echo "Convert bam to bigwig for sample: ${sample} and scale it by ${scale_factor}"
   ### forward strand
   bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -split -strand - -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.spikein.normalized.fwd.bedgraph
@@ -413,7 +413,7 @@ do
   ### normalized to library size
   ### bam -> bedgraph -> bigwig 
   ################################
-  scale_factor=$( cat ${reads_number} | awk -v s=$sample '{ if($1==s) {print 10^6/$2} }')  ### uniquely mapped reads
+  scale_factor=$( awk -v s=$sample '{ if($1==s) {print 10^6/$2} }' ${reads_number} )  ### uniquely mapped reads
   echo "Convert bam to bigwig for sample: ${sample} and scale it by ${scale_factor}"
   ### forward strand
   bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
