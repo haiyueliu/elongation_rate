@@ -73,7 +73,7 @@ gene.gr.rev <- gene.gr[strand(gene.gr) == "-"]
 
 ## 2. Count reads at single-base 
 
-Utilizing R bamCoverage function from the bamsignals package, we count the reads for each individual gene from its transcription start site [TSS] to its transcription end site [TES] at single-base resolution. An example of sample.info table can be found in the test_data folder. Once read coverage is counted, it is normalized by the spike-in size factor that have been pre-calculated using DESeq2. 
+Utilizing R bamCoverage function from the bamsignals package, we count the reads for each individual gene from its transcription start site [TSS] to its transcription end site [TES] at single-base resolution. An example of sample.info table can be found in the script folder. Once read coverage is counted, it is normalized by the spike-in size factor that have been pre-calculated using DESeq2. 
 
 Inputs:
 
