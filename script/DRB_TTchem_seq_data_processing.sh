@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=10                 # Number of CPU cores per task
 #SBATCH --mem=32gb                         # Job memory request
 #SBATCH --time=0-20:00:00
-#SBATCH --output=drb_ttchem_seq_log%j.log
+#SBATCH --output=DRB_TTchem_seq2_log%j.log
 
 set -euo pipefail
 
