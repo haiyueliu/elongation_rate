@@ -1,49 +1,49 @@
 #!/usr/bin/env Rscript
 args = commandArgs(trailingOnly=TRUE)
 
-### data dir
+### Arguments
+if (length(args)<3) {
+  stop("Not all arguments are supplied. Usage: size_factor.R <work.dir> <samplesheet> <gtf>\n", call. = FALSE)
+} 
+
 work.dir <- args[1]
 samplesheet <- args[2]
 gtf <- args[3]
 
+### Libraries
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(magrittr)
+  library(data.table)
+  library(ggplot2)
+  library(DESeq2)
+  library(rtracklayer)
+  library(GenomicFeatures)
+})
 
-### test if there is at least one argument: if not, return an error
-if (length(args)<3) {
-  stop("At least one argument is not supplied (input file).n", call.=FALSE)
-} 
+### Directories
+featureCounts.dir <- file.path(work.dir, "featureCounts")
+data.dir <- file.path(work.dir, "analysis")
 
-### library
-library(dplyr)
-library(tidyr)
-library(magrittr)
-library(data.table)
-library(ggplot2)
-library(DESeq2)
-library(rtracklayer)
-library(GenomicFeatures)
+### Samplesheet
+sample.info <- read.table(samplesheet, header = TRUE, atringAsFactors = FALSE)
 
-### dir
-featureCounts.dir <- paste0(work.dir, "featureCounts/")
-data.dir <- paste0(work.dir, "analysis/")
-
-### samplesheet
-sample.info <- read.table(samplesheet, header = TRUE)
-
-## Annotation of gene id and gene names
+## Annotation
 gtf.dat  <- rtracklayer::import(gtf)
 gtf.dat  <- as.data.frame(gtf.dat)
 gtf.dat %<>% mutate(species = ifelse(seqnames %in% paste0("chr", c(seq(1, 22), "X", "Y", "M")), "human", "yeast"))
 gene.dat <- gtf.dat[gtf.dat$type %in% "gene",]
-cat("Number of annotated genes in each transcriptome: \n")
-table(gene.dat$species)
+cat("Number of annotated genes by species: \n")
+print(table(gene.dat$species))
 
-### count data
+### Read count data
 raw.data <- list()
 count.data <- list()
 
 for (sample in sample.info$sample_name){
   print(sample)
-  raw.data[[sample]] <- read.table(file.path(featureCounts.dir, paste0(sample, ".gene.featureCounts.txt")), header = T)
+  raw.data[[sample]] <- read.table(file.path(featureCounts.dir, paste0(sample, ".gene.featureCounts.txt"), ), header = TRUE, stringAsFactors = FALSE)
   colnames(raw.data[[sample]]) <- c("gene_id", "chr", "start", "end", "strand", "length", "count")
   count.data[[sample]] <-
     raw.data[[sample]] %>%
@@ -62,7 +62,7 @@ cat("Number of genes in count data:", nrow(count.data), "\n")
 
 ### filter genes that do not express in any samples
 count.data <- count.data[apply(count.data, 1, sum) > 0,]
-cat("Number of genes in count dats after filtering genes with 0 counts across samples:", nrow(count.data), "\n")
+cat("Number of genes in count data after filtering genes with 0 counts across samples:", nrow(count.data), "\n")
 
 ### spike-in ratio 
 spikein.count.data <- count.data[rownames(count.data) %in% gene.dat$gene_id[gene.dat$species!="human"], ]
