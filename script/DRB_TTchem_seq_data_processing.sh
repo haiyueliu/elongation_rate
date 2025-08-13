@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=bash
-#SBATCH --mail-type=END,fal
+#SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=hailiu@sund.ku.dk
 #SBATCH --nodes=1                          # Run all processes on a single node	
 #SBATCH --ntasks=1                         # Run a single task
@@ -8,6 +8,8 @@
 #SBATCH --mem=32gb                         # Job memory request
 #SBATCH --time=0-20:00:00
 #SBATCH --output=drb_ttchem_seq_log%j.log
+
+set -euo pipefail
 
 ########################################
 ### Author: Haiyue Liu
@@ -30,14 +32,12 @@
 #############################################
 
 #################################################
+### CONFIGUREATION
 #################################################
-### configuration & references
-#################################################
-#################################################    
 ### Configuration: this section is project-specific. You need to modify those lines based on your own project setup. 
 ### Tools executables: all the tools are called via module load in this pipeline. If you use a diffrent system, you could change those module load lines.
 cores=10                                                    ### required; 
-work_dir=                                                   ### required; project directory; your fastq folder containing all raw reads should have been loaded into this folder 
+work_dir="/path/to/project/"                                ### required; project directory; your fastq folder containing all raw reads should have been loaded into this folder 
 script_dir="${work_dir}script/"                             ### required; script direcoty. The R function "size_factor.R" should be found there
 sample_sheet="${work_dir}script/samplesheet.tsv"            ### required; one example tsv file can be found in this github repository. The column names and orders matter for the pipeline, one exaple is shown in the data the test_data directory
 sequencing_type="SE"                                        ### required; options: "SE", "PE"
@@ -46,8 +46,8 @@ UMI_sequence="NNNNNNNNNNN"                                  ### required if UMI=
 strandedness="reverse-stranded"                             ### required; options: "reverse-stranded", "stranded", "unstranded"
 fastq_suffix=".fastq.gz"                                    ### required; options: ".fastq.gz", ".fq.gz"                                                                 
 ### index & annotation
-index_dir=                                                  ### required; your STAR index directory (e.g. GRCh38.gencode.v43_sacCer3.108_star_2.7.9a_index)
-gtf=                                                        ### required; the annotation gtf file (e.g. GRCh38.gencode.v43_sacCer3.108.gtf)
+index_dir="/path/to/star_index/"                            ### required; your STAR index directory (e.g. GRCh38.gencode.v43_sacCer3.108_star_2.7.9a_index)
+gtf="/path/to/annotaion.gtf"                                ### required; the annotation gtf file (e.g. GRCh38.gencode.v43_sacCer3.108.gtf)
 chrsize="${index_dir}/chrNameLength.txt"                    ### required; the chromosome size file which can be find in the star index directory 
 #################################################
 #################################################
@@ -55,9 +55,16 @@ chrsize="${index_dir}/chrNameLength.txt"                    ### required; the ch
 ############################
 ### check config parameters
 ############################
-[ ! -d ${work_dir} ] && echo "Working directory DOES NOT exists." && exit
-[ ! -f ${sample_sheet} ] && echo "Samplesheet file DOES NOT exists." && exit
-[ ! -f ${script_dir}size_factor.R ] && echo "size_factor.R file DOES NOT exists." && exit
+[ ! -d ${work_dir} ] && echo "ERROR: Working directory DOES NOT exists." && exit
+[ ! -f ${sample_sheet} ] && echo "ERROR: Samplesheet file DOES NOT exists." && exit
+[ ! -f ${script_dir}size_factor.R ] && echo "ERROR: Function of size_factor.R file DOES NOT exists." && exit
+[ ! -f ${index_dir} ] && echo "ERROR: Index directory DOES NOT exists." && exit
+[ ! -f ${gtf} ] && echo "ERROR: Annotation gtf file DOES NOT exists." && exit
+[ ! -f ${chrsize} ] && echo "ERROR: Chromosoze size file DOES NOT exists." && exit
+
+############################
+### obtain sample ids & names
+############################
 sample_ids=$(cat $sample_sheet | awk 'NR>1 {print $2}')
 sample_names=$(cat $sample_sheet | awk 'NR>1 {print $3}')
 
@@ -83,7 +90,7 @@ mkdir -p ${analysis_dir}
 cd ${work_dir}
 
 ########## Data processing ###############
-set -e
+
 #########################################
 ### 1. Attach UMIs in R2 to header of R1
 #########################################
@@ -199,7 +206,7 @@ do
   rm ${bam_dir}${sample}.Log.progress.out
 done
 ########################################
-### 4. Extract uniquely mapping reads
+### 4. Extract uniquely mapped reads
 ########################################
 module purge
 module load samtools/1.15.1
@@ -407,7 +414,7 @@ do
   ### normalized to library size
   ### bam -> bedgraph -> bigwig 
   ################################
-  scale_factor=$( cat ${reads_numbers} | awk -v s=$sample '{ if($1==s) {print 10^6/$2} }')  ### uniquely mapped reads
+  scale_factor=$( cat ${reads_number} | awk -v s=$sample '{ if($1==s) {print 10^6/$2} }')  ### uniquely mapped reads
   echo "Convert bam to bigwig for sample: ${sample} and scale it by ${scale_factor}"
   ### forward strand
   bedtools genomecov -ibam ${bam_name}.fwd.bam -bg -scale ${scale_factor} | sort --parallel=${cores} -k1,1 -k2,2n > ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
@@ -418,9 +425,6 @@ do
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.fwd.bedgraph
   rm ${bigwig_dir}${sample}.unimappers.libsize.normalized.rev.bedgraph
 done
-##############################
-#### Remove intermediate files
-##############################
 
 ##############################
 ### end
