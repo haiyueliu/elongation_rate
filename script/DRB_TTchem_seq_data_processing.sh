@@ -13,7 +13,7 @@ set -euo pipefail
 
 ########################################
 ### Author: Haiyue Liu
-### Date: 15-12-2023
+### Date: Initial version 15-12-2023
 ### This is the strandard pipeline for DRB/TTchem-seq2 data processing. 
 ### Libraries: single-ended reversely-stranded reads with UMI (11-mer) sequences. We demultiplexed the UMI sequences as R2 which are attached to R1 as headers in our pileline. 
 ### We also use yeast spike-ins for normalization of the nascent RNA libraries. For this, we creasted a huamn-yeast combine genome reference for mapping. 
@@ -45,7 +45,6 @@ UMI=true                                                    ### required; option
 UMI_sequence="NNNNNNNNNNN"                                  ### required if UMI=true; the length of UMIs can vary depends on the project
 strandedness="reverse-stranded"                             ### required; options: "reverse-stranded", "stranded", "unstranded"
 fastq_suffix=".fastq.gz"                                    ### required; options: ".fastq.gz", ".fq.gz"                                                                 
-### index & annotation
 index_dir="/path/to/star_index/"                            ### required; your STAR index directory (e.g. GRCh38.gencode.v43_sacCer3.108_star_2.7.9a_index)
 gtf="/path/to/annotaion.gtf"                                ### required; the annotation gtf file (e.g. GRCh38.gencode.v43_sacCer3.108.gtf)
 chrsize="${index_dir}/chrNameLength.txt"                    ### required; the chromosome size file which can be find in the star index directory 
@@ -53,7 +52,7 @@ chrsize="${index_dir}/chrNameLength.txt"                    ### required; the ch
 #################################################
 
 ############################
-### check config parameters
+### CHECK CONFIG PARAMETERS
 ############################
 [ ! -d ${work_dir} ] && echo "ERROR: Working directory DOES NOT exists." && exit
 [ ! -f ${sample_sheet} ] && echo "ERROR: Samplesheet file DOES NOT exists." && exit
@@ -63,13 +62,13 @@ chrsize="${index_dir}/chrNameLength.txt"                    ### required; the ch
 [ ! -f ${chrsize} ] && echo "ERROR: Chromosoze size file DOES NOT exists." && exit
 
 ############################
-### obtain sample ids & names
+### SAMPLE ID & NAME
 ############################
 sample_ids=$(cat $sample_sheet | awk 'NR>1 {print $2}')
 sample_names=$(cat $sample_sheet | awk 'NR>1 {print $3}')
 
 #############################
-### create sub-directories
+### DIRECTORIES
 #############################
 ### As far as the work_dir is given, these are automatically creasted.  
 fastq_dir="${work_dir}fastq/"
@@ -427,5 +426,5 @@ do
 done
 
 ##############################
-### end
+### END
 ##############################
