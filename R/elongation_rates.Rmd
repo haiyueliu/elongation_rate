@@ -12,106 +12,126 @@ date: 'Compiled: `r format(Sys.Date(), "%B %d, %Y")`'
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, cache = TRUE)
-knitr::opts_knit$set(root.dir = "~/Documents/GitHub/elongation_rate/")
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = TRUE, cache = TRUE)
+knitr::opts_knit$set(root.dir = "/path/to/workdir")
 ```
 
 ```{r libraries}
 ### load libraries
-suppressMessages(suppressWarnings(library(rtracklayer)))
-suppressMessages(suppressWarnings(library(GenomicFeatures)))
-suppressMessages(suppressWarnings(library(tibble)))
-suppressMessages(suppressWarnings(library(dplyr)))
-suppressMessages(suppressWarnings(library(tidyr)))
-suppressMessages(suppressWarnings(library(magrittr)))
-suppressMessages(suppressWarnings(library(ggplot2)))
+suppressPackageStartupMessages({
+  library(rtracklayer)
+  library(GenomicFeatures)
+  library(tibble)
+  library(dplyr)
+  library(tidyr)
+  library(magrittr)
+  library(ggplot2)
+})
 ### define notin  function 
 `%notin%` <- Negate(`%in%`)
 ```
 
-```{r helper_functions}
-source("~/Documents/GitHub/elongation_rate/R/helper_functions.R")
+
+```{r directories}
+bam.dir <- "/path/to/bam_files/"
+output.dir <- "/path/to/output_files/"
+gtf.file <- "/path/to/annotation.gtf"   
+sample.info.file <- "/path/to/sample.info.file"        ### table deleminated file containing "sample", "fact_size" columns
+count.file <- "/path/to/count.table.txt"
 ```
 
-```{r directories_files}
-bam.dir <- "~/Documents/GitHub/elongation_rate/test_data/"
-output.dir <- "~/Documents/GitHub/elongation_rate/output/"
-gtf.file <- "~/Documents/GitHub/elongation_rate/annotation/gencode.v43.primary_assembly.basic.annotation.gtf"
-sample.info <- read.table("~/Documents/GitHub/elongation_rate/sample.info.txt", header = TRUE)
+```{r helper_functions}
+source("/path/to/helper_functions.R")
+```
+
+```{r files}
+sample.info <- read.table(sample.info.file, header = TRUE)
+count.data <- read.table(count.file, header = TRUE)
 control.sample.names <- c("DRB_noR_rep1", "DRB_noR_rep2")       ### if no control samples, this can be set as NULL
 control.sample <- "DRB_noR"                                     ### if no control samples, this can be set as NULL
 ```
 
-## Filter gene annotation 
+## 1. Filter gene annotation 
 
-Filter genes annotation by keeping genes that do not overlap with other genes and within certain gene lengths [30kb, 300kb]. 
+exclude genes that overlap with other genes on the same strand and shorted than 30 kb. 
 
-```{r}
-### call the filter overlapping gene dunction to get the gene ranges with non-overlapping genes
+```{r filter_gene_anno}
 min.genewidth <- 30000
-max.genewidth <- 300000
-gene.gr <- filter_overlapping_genes(gtf = gtf.file,                     ### full path to annotation file in gtf format (Gencode / Ensembl)
+max.genewidth <- NULL
+gene.gr <- filter_overlapping_genes(gtf = gtf.file,                     
                                     lower.length = min.genewidth,
                                     upper.length = max.genewidth,
-                                    count.data = count.data)                  ### if count.data is provided, we only look at genes that are expressed in the data
+                                    count.data = count.data)                  ### if count.data is provided, we only look at genes that are expressed in the dataset
 gene.gr$strand <- strand(gene.gr)
-cat("The number of genes left after filtering ovelapping genes and limiting gene lengths:", length(gene.gr))
+cat("The number of genes left after filtering overlapping genes and limiting gene lengths:", length(gene.gr))
 
-### split genes on the forword and reverse strands
+### split genes by strand
 gene.gr.fwd <- gene.gr[strand(gene.gr) == "+"]
 gene.gr.rev <- gene.gr[strand(gene.gr) == "-"]
 
 ```
 
-## Count single-base position read coverage 
+## 2. Count reads at single-base 
 
-Utilizing bamsignals package, we count the reads coverage for each individual genes from its transcription start site [TSS] to its transcription end site [TES] at single-base resolution. The inputs are reads alignments file (bam format) and sample info table. An example of sample info tale is shown below. Importantly, we use spike-ins for normalization. The size factors of spike-ins were pre-calculated using DESeq2. 
+Utilizing R bamCoverage function from the bamsignals package, we count the reads for each individual gene from its transcription start site [TSS] to its transcription end site [TES] at single-base resolution. An example of sample.info table can be found in the test_data folder. Once read coverage is counted, it is normalized by the spike-in size factor that have been pre-calculated using DESeq2. 
 
+Inputs:
 
-```{r}
-### Count the raw read depth for each gene from its TSS to its TES from bam files (bamCoverage function from bamsignals package)
-### Normalize the read depth to the size factors of each sample 
+(1) read alignments (bam) 
+(2) sample.info (text table)
+(3) gene range file (gene.gr)
+
+Outputs:
+
+(1) normalized read coverage at single-bp positions for individual genes (list)
+
+```{r count_reads_at_single_bp}
 cov.list <- list()
 for (sample in sample.info$sample_name){
   print(sample)
-  ### retrieve the size factor for each sample from sample.info table
+  ### Retrieve size factor
   size.factor = sample.info$size_factor[sample.info$sample_name==sample]
-  bam.fwd.file = paste0(bam.dir, sample, ".unspliced.fwd.bam")
-  bam.rev.file = paste0(bam.dir, sample, ".unspliced.rev.bam")
-  ### count read depth for genes on the forward and reverse strands
-  cov.fwd <- bamsignals::bamCoverage(bampath = bam.fwd.file,
+  
+  bam.fwd.file = file.path(bam.dir, paste0(sample, ".fwd.bam"))
+  bam.rev.file = file.path(bam.dir, paste0(sample, ".rev.bam"))
+  
+  ### Count read depth forward and reverse genes
+  cov.fwd <- bamsignals::bamCoverage(bampath = bam.fwd.file, 
                                      gr = gene.gr.fwd,
                                      filteredFlag = 1024,
                                      paired.end = "ignore",
                                      mapqual = 20,
                                      verbose = FALSE)
+  
   cov.rev <- bamsignals::bamCoverage(bampath = bam.rev.file,
                                      gr = gene.gr.rev,
                                      filteredFlag = 1024,
                                      paired.end = "ignore",
                                      mapqual = 20,
                                      verbose = FALSE)
+  ### Extract values
   cov.fwd <- cov.fwd@signals
   cov.rev <- cov.rev@signals
-  ### add gene ids to list names
+  
+  ### Add gene ids 
   names(cov.fwd) <- gene.gr.fwd$gene_id
   names(cov.rev) <- gene.gr.rev$gene_id
-  ### combine genes on the forward and reverse strands
+  
+  ### Combine genes on the forward and reverse strands
   cov.list[[sample]] <- c(cov.fwd, cov.rev)
   
-  ### remove genes that do not express in these samples
+  ### Remove genes with zero counts
   if(!(sample %in% control.sample.names)){
     cov.list[[sample]] <- cov.list[[sample]][lapply(cov.list[[sample]], sum) > 0]
   }
-  
-  ### normalize read depths to pre-calculated sample size factors (i.e. spike-in size factors or library sizes)
+  ### Normalize by size factors 
   cov.list[[sample]] <- lapply(cov.list[[sample]], function(x){round(x/size.factor, 3)})
 }
-
 rm(cov.fwd)
 rm(cov.rev)
 gc()
-### keep the same genes for all samples
+
+### Keep only genes expressed in all samples 
 common.genes <- Reduce(intersect, lapply(cov.list, names))
 for(sample in names(cov.list)){
   cov.list[[sample]] <- cov.list[[sample]][common.genes]
@@ -119,26 +139,31 @@ for(sample in names(cov.list)){
 cat("Count bp-resolution read depths for", length(cov.list[[1]]), "genes. \n")
 ```
 
-## Filter lowly expressed genes
+## 3. Remove lowly expressed genes
 
-To save time and space for downstream analysis, we only focus on genes with high coverage. In our case, we filter out genes whose mean coverage values are less than 0.01 in any non-control samples. It is optimal that you compare the mean coverage distributions of genes across samples and define the cutoff accordingly.
+To save time and space for downstream analysis, we only focus on genes with high coverage. In our case, we filter out genes whose mean coverage values are less than 0.01 in the nascent samples. Ideally, you explore the distribution of the read coverage files and define the threshold accordingly. 
 
-```{r}
+```{r remove_lowly_exp_genes}
 mean.cov.cutoff <- 0.01
-genes.keep <- filter_low_expr_genes(cov.list = cov.list, mean.cov.cutoff = mean.cov.cutoff, control.samples = control.sample.names)$genes.keep
-cat("Keep ", length(genes.keep), " genes after filtering low expression genes. \n")
+
+gene.anno <- filter_low_expr_genes(cov.list = cov.list, 
+                                    mean.cov.cutoff = mean.cov.cutoff, 
+                                    control.samples = control.sample.names)
+genes.keep <- gene.anno$genes.keep
+cat("Keep ", length(genes.keep), " genes after filtering lowly expressed genes. \n")
+
 for (sample in names(cov.list)){
   cov.list[[sample]] <- cov.list[[sample]][genes.keep]
 }
 ```
 
-## Normalize coverage to control samples (Optional)
+## 4. Normalize coverage to control samples (Optional)
 
-We suggest to perform DRB/TTchem-seq2 with control samples in which DRB is not washed out, but 4sU is incorporated for the same times as the other samples to estimate the background signal levels. 
+We suggest to perform DRB/TTchem-seq2 with control samples in which DRB is not washed out but 4sU is incorporated for the same time as the other samples to estimate the background signals. 
 
 If you do have control samples, the DRB release samples are normalized to controls samples. If not, this step can be ignored. 
 
-```{r}
+```{r normalize_to_control}
 #### Mean coverage across replicates
 mean.cov.list <- list()
 for(sample in unique(sample.info$sample)){
@@ -172,11 +197,11 @@ rm(mean.cov.list)
 gc()
 ```
 
-## Smooth read coverage profiles
+## 5. Smooth read coverage profiles
 
-Similar to [Gregersen et al., 2020](), we smooth the coverage profiles of every gene using R function smooth.spline. The spar parameter control the wiglleness and smoothness. We use spar=0.9 for single gene profile.
+Similar to [Gregersen et al., 2020](DOI: 10.1038/s41596-019-0262-3), we smooth read coverage profiles using R function smooth.spline. The spar parameter controls the smoothness. We use spar=0.9 for single gene profile.
 
-```{r}
+```{r smooth_profile}
 gene.spar=0.9     
 norm.spline.list <- list()
 for (sample in names(norm.cov.list)){
@@ -188,26 +213,25 @@ saveRDS(norm.cov.list, paste0(output.dir, "norm.cov.list.Rds"))
 saveRDS(norm.spline.list, paste0(output.dir, "norm.spline.list.Rds"))
 ```
 
-## Wave fronts identification
+## 6. Wave fronts identification
 
 To find the longest distance traveled by RNA Polymerase II (RNAPII) in certain time intervals, we computationally identify the fronts of the elongation waves. 
 
-```{r}
-### find the wave front of the elongating RNAPII products relative to the transcript's TSS
+```{r find_wave_front}
 wf <- sapply(norm.spline.list, function(x) {sapply(x, function(i) {wave_front_calling(i)})}) %>% as.data.frame
 wf[is.na(wf)] <- 0
 
-wf_long <-
-  wf %>%
-  rownames_to_column("gene_id") %>%
-  pivot_longer(cols = -gene_id, names_to = "sample", values_to = "wf") %>%
-  mutate(sample = factor(sample, levels = unique(sample.info$sample)))
+# wf_long <-
+#   wf %>%
+#   rownames_to_column("gene_id") %>%
+#   pivot_longer(cols = -gene_id, names_to = "sample", values_to = "wf") %>%
+#   mutate(sample = factor(sample, levels = unique(sample.info$sample)))
 ```
 
-## Elongation rates calculation 
+## 7. Elongation rates calculation 
 
-```{r}
-### order of the wave front position for each gene
+```{r linear_regression}
+### order of the wave fronts for each gene
 wave.orders <- apply(wf, 1, function(x) {paste0(order(x), collapse = "")})
 
 rate_df <-
@@ -223,7 +247,7 @@ rate_df <-
   left_join(as.data.frame(wave.orders) %>%
               rownames_to_column("gene_id"))
 
-### recheck the orders of the position of wave fronts
+### recheck the orders of wave fronts
 rate_df %<>%
   group_by(gene_id) %>%
   mutate(order = ifelse((wf[DRB=="DRB_5minR"] < wf[DRB=="DRB_10minR"]) &
@@ -231,7 +255,8 @@ rate_df %<>%
                           (wf[DRB=="DRB_15minR"] < wf[DRB=="DRB_20minR"]) &
                           (wf[DRB=="DRB_20minR"] != round(gene_length/1000, 1)), "1234",
                         ifelse((wf[DRB=="DRB_5minR"] < wf[DRB=="DRB_10minR"]) &
-                                 (wf[DRB=="DRB_10minR"] < wf[DRB=="DRB_15minR"]), "123", "other")))
+                                 (wf[DRB=="DRB_10minR"] < wf[DRB=="DRB_15minR"]), "123", "other"))) %>%
+  ungroup()
 
 rate_df %<>%
   group_by(gene_id) %>%
@@ -240,12 +265,12 @@ rate_df %<>%
                                          lm(wf~time)$coef[2])),
          adj.r.squared = ifelse(order == "1234", summary(lm(wf~time))$adj.r.squared,
                                 ifelse(order == "123", summary(lm(wf[DRB!="DRB_20minR"]~time[DRB!="DRB_20minR"]))$adj.r.squared,
-                                       summary(lm(wf~time))$adj.r.squared)))
+                                       summary(lm(wf~time))$adj.r.squared))) %>%
+  ungroup()
 ```
 
-Save data.
 
-```{r}
+```{r save_data}
 write.table(rate_df, paste0(output.dir, "elongation_rate_tb.txt"), quote=FALSE, sep="\t", row.names=FALSE)
 ```
 
