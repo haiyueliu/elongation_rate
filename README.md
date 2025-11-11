@@ -65,5 +65,5 @@ Install the required R packages:
 
 ## Reference 
 
-1. Liu H & Gregersen LH (2025) [Kinetic measurement of gene-specific RNA polymerase II transcription elongation rates.](https://doi: 10.1101/gr.280852.125](https://www.genome.org/cgi/doi/10.1101/gr.280852.125) Genome Res: genome;gr.280852.125v1
+1. Liu H & Gregersen LH (2025) [Kinetic measurement of gene-specific RNA polymerase II transcription elongation rates.](https://www.genome.org/cgi/doi/10.1101/gr.280852.125) Genome Res: genome;gr.280852.125v1
 2. Gregersen LH, Mitter R & Svejstrup JQ (2020) [Using TTchem-seq for profiling nascent transcription and measuring transcript elongation.](https://doi.org/10.1038/s41596-019-0262-3) Nat Protoc 15: 604–627
