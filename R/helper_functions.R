@@ -23,7 +23,7 @@ filter_overlapping_genes <- function(gtf = gtf.file,                    ### full
                                      count.data = NULL) {
   
   ### read gtf file as gene range file
-  gtf <- rtracklayer::import(gtf.file)
+  gtf <- rtracklayer::import(gtf)
   ### only keep gene tracks
   gene.gr <- gtf[gtf$type=="gene"]
   gene.gr$gene_width <- width(gene.gr)
@@ -61,13 +61,13 @@ filter_low_expr_genes <- function(cov.list = cov.list,
   ### distributions
   p_mean_cov <-
     mean.cov.df %>%
-    ggplot(aes(mean.cov)) %>%
-    + geom_histogram(bins=50, color="grey") %>%
-    + geom_vline(xintercept = mean.cov.cutoff, linetype="dashed") %>%
-    + scale_x_log10() %>%
-    + scale_y_log10() %>%
-    + facet_wrap(~sample, ncol=2) %>%
-    + theme_bw()
+    ggplot(aes(mean.cov)) +
+    geom_histogram(bins=50, color="grey") +
+    geom_vline(xintercept = mean.cov.cutoff, linetype="dashed") +
+    scale_x_log10() +
+    scale_y_log10() +
+    facet_wrap(~sample, ncol=2) +
+    theme_bw()
   ### keep highly expressed genes
   genes.keep <- 
     mean.cov.df %>%
