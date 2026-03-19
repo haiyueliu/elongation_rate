@@ -36,7 +36,7 @@ suppressPackageStartupMessages({
 bam.dir <- "/path/to/bam_files/"
 output.dir <- "/path/to/output_files/"
 gtf.file <- "/path/to/annotation.gtf"   
-sample.info.file <- "/path/to/sample.info.file"        ### table deleminated file containing "sample", "fact_size" columns
+sample.info.file <- "/path/to/sample.info.file"        ### table deleminated file containing "sample", "size_factor" columns
 count.file <- "/path/to/count.table.txt"
 ```
 
@@ -57,7 +57,7 @@ exclude genes that overlap with other genes on the same strand and shorted than 
 
 ```{r filter_gene_anno}
 min.genewidth <- 30000
-max.genewidth <- NULL
+max.genewidth <- Inf
 gene.gr <- filter_overlapping_genes(gtf = gtf.file,                     
                                     lower.length = min.genewidth,
                                     upper.length = max.genewidth,
@@ -183,7 +183,7 @@ if( !is.null(control.sample.names)){
       print(sample)
       list.drb <- mean.cov.list[[sample]]
       list.ctrl <- mean.cov.list[[control.sample]]
-      for(m in names(list1)){
+      for(m in names(list.drb)){
         norm.cov.list[[sample]][[m]] <- pmax(0, list.drb[[m]] - list.ctrl[[m]])
       }
     }
