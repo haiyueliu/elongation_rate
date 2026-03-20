@@ -17,7 +17,7 @@ knitr::opts_knit$set(root.dir = "/path/to/workdir")
 ```
 
 ```{r libraries}
-### load libraries
+### Load libraries
 suppressPackageStartupMessages({
   library(rtracklayer)
   library(GenomicFeatures)
@@ -27,253 +27,288 @@ suppressPackageStartupMessages({
   library(magrittr)
   library(ggplot2)
 })
-### define notin  function 
+### Define %notin% operator
 `%notin%` <- Negate(`%in%`)
 ```
 
-
 ```{r directories}
-bam.dir <- "/path/to/bam_files/"
-output.dir <- "/path/to/output_files/"
-gtf.file <- "/path/to/annotation.gtf"   
-sample.info.file <- "/path/to/sample.info.file"        ### table deleminated file containing "sample", "fact_size" columns
-count.file <- "/path/to/count.table.txt"
+bam.dir         <- "/path/to/bam_files/"
+output.dir      <- "/path/to/output_files/"
+gtf.file        <- "/path/to/annotation.gtf"
+sample.info.file <- "/path/to/sample.info.file"   ### tab-delimited file with columns: sample_name, size_factor, sample, rep
+count.file      <- "/path/to/count.table.txt"
 ```
 
 ```{r helper_functions}
-source("/path/to/helper_functions.R")
+source("/path/to/help_functions.R")
 ```
 
 ```{r files}
-sample.info <- read.table(sample.info.file, header = TRUE)
-count.data <- read.table(count.file, header = TRUE)
-control.sample.names <- c("DRB_noR_rep1", "DRB_noR_rep2")       ### if no control samples, this can be set as NULL
-control.sample <- "DRB_noR"                                     ### if no control samples, this can be set as NULL
+sample.info          <- read.table(sample.info.file, header = TRUE, stringsAsFactors = FALSE)
+count.data           <- read.table(count.file, header = TRUE, stringsAsFactors = FALSE)
+control.sample.names <- c("DRB_noR_rep1", "DRB_noR_rep2")   ### set to NULL if no control samples
+control.sample       <- "DRB_noR"                            ### set to NULL if no control samples
 ```
 
-## 1. Filter gene annotation 
+## 1. Filter gene annotation
 
-exclude genes that overlap with other genes on the same strand and shorted than 30 kb. 
+Exclude genes that overlap with other genes on the same strand and genes shorter than 30 kb.
 
 ```{r filter_gene_anno}
 min.genewidth <- 30000
-max.genewidth <- NULL
-gene.gr <- filter_overlapping_genes(gtf = gtf.file,                     
-                                    lower.length = min.genewidth,
-                                    upper.length = max.genewidth,
-                                    count.data = count.data)                  ### if count.data is provided, we only look at genes that are expressed in the dataset
-gene.gr$strand <- strand(gene.gr)
-cat("The number of genes left after filtering overlapping genes and limiting gene lengths:", length(gene.gr))
+max.genewidth <- Inf
 
-### split genes by strand
+gene.gr <- filter_overlapping_genes(
+  gtf          = gtf.file,
+  lower.length = min.genewidth,
+  upper.length = max.genewidth,
+  count.data   = count.data          ### restricts to expressed genes when provided
+)
+gene.gr$strand <- strand(gene.gr)
+cat("Genes remaining after filtering overlapping genes and applying length limits:", length(gene.gr), "\n")
+
+### Split genes by strand
 gene.gr.fwd <- gene.gr[strand(gene.gr) == "+"]
 gene.gr.rev <- gene.gr[strand(gene.gr) == "-"]
-
 ```
 
-## 2. Count reads at single-base 
+## 2. Count reads at single-base resolution
 
-Utilizing R bamCoverage function from the bamsignals package, we count the reads for each individual gene from its transcription start site [TSS] to its transcription end site [TES] at single-base resolution. An example of sample.info table can be found in the script folder. Once read coverage is counted, it is normalized by the spike-in size factor that have been pre-calculated using DESeq2. 
+Using `bamsignals::bamCoverage`, we count reads for each gene from TSS to TES at single-base resolution, then normalize by the spike-in size factor pre-calculated with DESeq2.
 
-Inputs:
-
-(1) read alignments (bam) 
-(2) sample.info (text table)
-(3) gene range file (gene.gr)
-
-Outputs:
-
-(1) normalized read coverage at single-bp positions for individual genes (list)
+Inputs: (1) bam files, (2) sample.info table, (3) gene range object  
+Output: spike-in normalized per-base coverage list
 
 ```{r count_reads_at_single_bp}
 cov.list <- list()
-for (sample in sample.info$sample_name){
+
+for (sample in sample.info$sample_name) {
   print(sample)
-  ### Retrieve size factor
-  size.factor = sample.info$size_factor[sample.info$sample_name==sample]
-  
-  bam.fwd.file = file.path(bam.dir, paste0(sample, ".fwd.bam"))
-  bam.rev.file = file.path(bam.dir, paste0(sample, ".rev.bam"))
-  
-  ### Count read depth forward and reverse genes
-  cov.fwd <- bamsignals::bamCoverage(bampath = bam.fwd.file, 
-                                     gr = gene.gr.fwd,
-                                     filteredFlag = 1024,
-                                     paired.end = "ignore",
-                                     mapqual = 20,
-                                     verbose = FALSE)
-  
-  cov.rev <- bamsignals::bamCoverage(bampath = bam.rev.file,
-                                     gr = gene.gr.rev,
-                                     filteredFlag = 1024,
-                                     paired.end = "ignore",
-                                     mapqual = 20,
-                                     verbose = FALSE)
-  ### Extract values
+
+  size.factor  <- sample.info$size_factor[sample.info$sample_name == sample]
+  bam.fwd.file <- file.path(bam.dir, paste0(sample, ".fwd.bam"))
+  bam.rev.file <- file.path(bam.dir, paste0(sample, ".rev.bam"))
+
+  ### Count read depth on forward and reverse strand genes
+  cov.fwd <- bamsignals::bamCoverage(
+    bampath     = bam.fwd.file,
+    gr          = gene.gr.fwd,
+    filteredFlag = 1024,
+    paired.end  = "ignore",
+    mapqual     = 20,
+    verbose     = FALSE
+  )
+  cov.rev <- bamsignals::bamCoverage(
+    bampath     = bam.rev.file,
+    gr          = gene.gr.rev,
+    filteredFlag = 1024,
+    paired.end  = "ignore",
+    mapqual     = 20,
+    verbose     = FALSE
+  )
+
+  ### Extract signal vectors and assign gene IDs
   cov.fwd <- cov.fwd@signals
   cov.rev <- cov.rev@signals
-  
-  ### Add gene ids 
   names(cov.fwd) <- gene.gr.fwd$gene_id
   names(cov.rev) <- gene.gr.rev$gene_id
-  
-  ### Combine genes on the forward and reverse strands
+
+  ### Combine forward and reverse strand genes
   cov.list[[sample]] <- c(cov.fwd, cov.rev)
-  
-  ### Remove genes with zero counts
-  if(!(sample %in% control.sample.names)){
-    cov.list[[sample]] <- cov.list[[sample]][lapply(cov.list[[sample]], sum) > 0]
+
+  ### Remove genes with zero counts (skip for control samples)
+  if (!(sample %in% control.sample.names)) {
+    # FIX: lapply returns a list — list > 0 does not give a logical vector for subsetting.
+    #      Use sapply to get a named logical vector.
+    cov.list[[sample]] <- cov.list[[sample]][sapply(cov.list[[sample]], sum) > 0]
   }
-  ### Normalize by size factors 
-  cov.list[[sample]] <- lapply(cov.list[[sample]], function(x){round(x/size.factor, 3)})
+
+  ### Normalize by spike-in size factor
+  cov.list[[sample]] <- lapply(cov.list[[sample]], function(x) { round(x / size.factor, 3) })
 }
-rm(cov.fwd)
-rm(cov.rev)
+rm(cov.fwd, cov.rev)
 gc()
 
-### Keep only genes expressed in all samples 
+### Restrict to genes present in all samples
 common.genes <- Reduce(intersect, lapply(cov.list, names))
-for(sample in names(cov.list)){
+for (sample in names(cov.list)) {
   cov.list[[sample]] <- cov.list[[sample]][common.genes]
 }
-cat("Count bp-resolution read depths for", length(cov.list[[1]]), "genes. \n")
+cat("Counting bp-resolution read depths for", length(cov.list[[1]]), "genes.\n")
 ```
 
 ## 3. Remove lowly expressed genes
 
-To save time and space for downstream analysis, we only focus on genes with high coverage. In our case, we filter out genes whose mean coverage values are less than 0.01 in the nascent samples. Ideally, you explore the distribution of the read coverage files and define the threshold accordingly. 
+Filter out genes with mean coverage < 0.01 in nascent samples. Adjust the threshold based on your data distribution.
 
 ```{r remove_lowly_exp_genes}
 mean.cov.cutoff <- 0.01
 
-gene.anno <- filter_low_expr_genes(cov.list = cov.list, 
-                                    mean.cov.cutoff = mean.cov.cutoff, 
-                                    control.samples = control.sample.names)
+# FIX: pass sample.info explicitly (was previously read from global scope inside the function)
+gene.anno <- filter_low_expr_genes(
+  cov.list        = cov.list,
+  mean.cov.cutoff = mean.cov.cutoff,
+  control.samples = control.sample.names,
+  sample.info     = sample.info
+)
 genes.keep <- gene.anno$genes.keep
-cat("Keep ", length(genes.keep), " genes after filtering lowly expressed genes. \n")
+cat("Genes retained after expression filtering:", length(genes.keep), "\n")
 
-for (sample in names(cov.list)){
+for (sample in names(cov.list)) {
   cov.list[[sample]] <- cov.list[[sample]][genes.keep]
 }
 ```
 
-## 4. Normalize coverage to control samples (Optional)
+## 4. Normalize coverage to control samples (optional)
 
-We suggest to perform DRB/TTchem-seq2 with control samples in which DRB is not washed out but 4sU is incorporated for the same time as the other samples to estimate the background signals. 
-
-If you do have control samples, the DRB release samples are normalized to controls samples. If not, this step can be ignored. 
+Control samples (DRB not washed out, 4sU incorporated) estimate background signal. DRB release samples are normalized by subtracting the control mean. Skip if no control samples are available.
 
 ```{r normalize_to_control}
-#### Mean coverage across replicates
+### Average coverage across replicates
 mean.cov.list <- list()
-for(sample in unique(sample.info$sample)){
+for (sample in unique(sample.info$sample)) {
   print(sample)
-  ### mean coverage for each position in each gene across replicates
   list1 <- cov.list[[ sample.info$sample_name[sample.info$sample == sample & sample.info$rep == "rep1"] ]]
   list2 <- cov.list[[ sample.info$sample_name[sample.info$sample == sample & sample.info$rep == "rep2"] ]]
-  for(m in names(list1)){
+  for (m in names(list1)) {
     mean.cov.list[[sample]][[m]] <- rowMeans(cbind(list1[[m]], list2[[m]]))
   }
 }
-if( !is.null(control.sample.names)){
-  ### Subtract the mean coverage of each sample by the mean coverage of control sample.
+
+if (!is.null(control.sample.names)) {
+  ### Subtract control mean coverage from each DRB release sample
   norm.cov.list <- list()
-  for(sample in names(mean.cov.list)){
-    if(sample %notin% control.sample){
+  for (sample in names(mean.cov.list)) {
+    if (sample %notin% control.sample) {
       print(sample)
-      list.drb <- mean.cov.list[[sample]]
+      list.drb  <- mean.cov.list[[sample]]
       list.ctrl <- mean.cov.list[[control.sample]]
-      for(m in names(list1)){
+      for (m in names(list.drb)) {
         norm.cov.list[[sample]][[m]] <- pmax(0, list.drb[[m]] - list.ctrl[[m]])
       }
     }
   }
-} else{
+} else {
   norm.cov.list <- mean.cov.list
 }
-## remove intermediate files
-rm(cov.list)
-rm(mean.cov.list)
+
+rm(cov.list, mean.cov.list)
 gc()
 ```
 
 ## 5. Smooth read coverage profiles
 
-Similar to [Gregersen et al., 2020](DOI: 10.1038/s41596-019-0262-3), we smooth read coverage profiles using R function smooth.spline. The spar parameter controls the smoothness. We use spar=0.9 for single gene profile.
+Smooth per-gene coverage using `smooth.spline` with `spar = 0.9`, following Gregersen et al. (2020).
 
 ```{r smooth_profile}
-gene.spar=0.9     
+gene.spar <- 0.9
 norm.spline.list <- list()
-for (sample in names(norm.cov.list)){
-  ### spline for each sample (mean across replicates) after control normalization
+
+for (sample in names(norm.cov.list)) {
   print(sample)
-  norm.spline.list[[sample]] <- sapply(norm.cov.list[[sample]], function(x){pmax(0, round(smooth.spline(1:length(x), x, spar=gene.spar)$y, 3))})
+  norm.spline.list[[sample]] <- sapply(
+    norm.cov.list[[sample]],
+    function(x) { pmax(0, round(smooth.spline(seq_along(x), x, spar = gene.spar)$y, 3)) }
+  )
 }
-saveRDS(norm.cov.list, paste0(output.dir, "norm.cov.list.Rds"))
-saveRDS(norm.spline.list, paste0(output.dir, "norm.spline.list.Rds"))
+
+saveRDS(norm.cov.list,    file.path(output.dir, "norm.cov.list.Rds"))
+saveRDS(norm.spline.list, file.path(output.dir, "norm.spline.list.Rds"))
 ```
 
-## 6. Wave fronts identification
+## 6. Wave front identification
 
-To find the longest distance traveled by RNA Polymerase II (RNAPII) in certain time intervals, we computationally identify the fronts of the elongation waves. 
+Identify the leading edge of the elongation wave (furthest distance RNAPII has traveled) for each gene and time point.
 
 ```{r find_wave_front}
-wf <- sapply(norm.spline.list, function(x) {sapply(x, function(i) {wave_front_calling(i)})}) %>% as.data.frame
-wf[is.na(wf)] <- 0
+wf <- sapply(norm.spline.list, function(x) {
+  sapply(x, function(i) { wave_front_calling(i) })
+}) %>% as.data.frame()
 
-# wf_long <-
-#   wf %>%
-#   rownames_to_column("gene_id") %>%
-#   pivot_longer(cols = -gene_id, names_to = "sample", values_to = "wf") %>%
-#   mutate(sample = factor(sample, levels = unique(sample.info$sample)))
+wf[is.na(wf)] <- 0
 ```
 
-## 7. Elongation rates calculation 
+## 7. Elongation rate calculation
+
+Fit a linear model of wave-front distance (kb) ~ DRB release time (min) per gene. Genes with monotonically ordered wave fronts across all four time points use all four points; genes where the 20 min front is at gene end use the first three.
 
 ```{r linear_regression}
-### order of the wave fronts for each gene
-wave.orders <- apply(wf, 1, function(x) {paste0(order(x), collapse = "")})
+### Determine wave front ordering per gene
+wave.orders <- apply(wf, 1, function(x) { paste0(order(x), collapse = "") })
 
 rate_df <-
   wf %>%
   rownames_to_column("gene_id") %>%
-  left_join(gene.gr %>%
-              as.data.frame %>%
-              mutate(gene_length = width) %>%
-              dplyr::select(gene_id, gene_name, gene_type, gene_length)) %>%
-  pivot_longer(cols = -c(gene_id, gene_type, gene_name, gene_length), names_to = "DRB", values_to = "wf") %>%
-  mutate(wf = as.numeric(wf/1000)) %>%
-  mutate(time = as.numeric(sub("minR", "", sub("DRB_", "", DRB)))) %>%
-  left_join(as.data.frame(wave.orders) %>%
-              rownames_to_column("gene_id"))
+  left_join(
+    gene.gr %>%
+      as.data.frame() %>%
+      mutate(gene_length = width) %>%
+      dplyr::select(gene_id, gene_name, gene_type, gene_length),
+    by = "gene_id"   # FIX: explicit join key (best practice; avoids ambiguity if column names overlap)
+  ) %>%
+  pivot_longer(
+    cols     = -c(gene_id, gene_type, gene_name, gene_length),
+    names_to  = "DRB",
+    values_to = "wf"
+  ) %>%
+  mutate(
+    wf   = as.numeric(wf / 1000),
+    time = as.numeric(sub("minR", "", sub("DRB_", "", DRB)))
+  ) %>%
+  left_join(
+    as.data.frame(wave.orders) %>% rownames_to_column("gene_id"),
+    by = "gene_id"
+  )
 
-### recheck the orders of wave fronts
+### Recheck wave front order and assign order category
 rate_df %<>%
   group_by(gene_id) %>%
-  mutate(order = ifelse((wf[DRB=="DRB_5minR"] < wf[DRB=="DRB_10minR"]) &
-                          (wf[DRB=="DRB_10minR"] < wf[DRB=="DRB_15minR"]) &
-                          (wf[DRB=="DRB_15minR"] < wf[DRB=="DRB_20minR"]) &
-                          (wf[DRB=="DRB_20minR"] != round(gene_length/1000, 1)), "1234",
-                        ifelse((wf[DRB=="DRB_5minR"] < wf[DRB=="DRB_10minR"]) &
-                                 (wf[DRB=="DRB_10minR"] < wf[DRB=="DRB_15minR"]), "123", "other"))) %>%
+  mutate(order = ifelse(
+    (wf[DRB == "DRB_5minR"]  < wf[DRB == "DRB_10minR"]) &
+    (wf[DRB == "DRB_10minR"] < wf[DRB == "DRB_15minR"]) &
+    (wf[DRB == "DRB_15minR"] < wf[DRB == "DRB_20minR"]) &
+    (wf[DRB == "DRB_20minR"] != round(first(gene_length) / 1000, 1)),
+    "1234",
+    ifelse(
+      (wf[DRB == "DRB_5minR"]  < wf[DRB == "DRB_10minR"]) &
+      (wf[DRB == "DRB_10minR"] < wf[DRB == "DRB_15minR"]),
+      "123", "other"
+    )
+  )) %>%
   ungroup()
 
+### Fit linear model once per gene and extract slope + R²
+# FIX: original code called lm() twice per gene (once for slope, once for R²).
+#      Fit once, extract both metrics from the single model object.
 rate_df %<>%
   group_by(gene_id) %>%
-  mutate(elongation.rate = ifelse(order == "1234", lm(wf~time)$coef[2],
-                                  ifelse(order == "123", lm(wf[DRB!="DRB_20minR"] ~ time[DRB!="DRB_20minR"])$coef[2],
-                                         lm(wf~time)$coef[2])),
-         adj.r.squared = ifelse(order == "1234", summary(lm(wf~time))$adj.r.squared,
-                                ifelse(order == "123", summary(lm(wf[DRB!="DRB_20minR"]~time[DRB!="DRB_20minR"]))$adj.r.squared,
-                                       summary(lm(wf~time))$adj.r.squared))) %>%
+  mutate(
+    fit = list(
+      if (first(order) == "1234") {
+        lm(wf ~ time)
+      } else if (first(order) == "123") {
+        lm(wf[DRB != "DRB_20minR"] ~ time[DRB != "DRB_20minR"])
+      } else {
+        lm(wf ~ time)
+      }
+    ),
+    elongation.rate = fit[[1]]$coef[2],
+    adj.r.squared   = summary(fit[[1]])$adj.r.squared
+  ) %>%
+  dplyr::select(-fit) %>%
   ungroup()
 ```
-
 
 ```{r save_data}
-write.table(rate_df, paste0(output.dir, "elongation_rate_tb.txt"), quote=FALSE, sep="\t", row.names=FALSE)
+write.table(
+  rate_df,
+  file.path(output.dir, "elongation_rate_tb.txt"),
+  quote     = FALSE,
+  sep       = "\t",
+  row.names = FALSE
+)
 ```
 
-```{r}
+```{r session_info}
 sessionInfo()
 ```
