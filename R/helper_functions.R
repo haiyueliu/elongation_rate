@@ -119,7 +119,7 @@ wave_front_calling <- function(y,
 
   ### Cosine similarity via the law of cosines
   # FIX: guard against division by zero at endpoints (d1=0 or d2=0 -> NaN)
-  cosine_values <- abs((d1^2 + d2^2 - dmax^2) / (2 * pmax(d1 * d2, 1e-10)))
+  cosine_values <- abs((d1^2 + d2^2 - dmax^2) / (2 * d1 * d2))
 
   ### Index of minimum cosine (= sharpest bend = wave front),
   ### constrained to be at least `offset` positions downstream of TSS
